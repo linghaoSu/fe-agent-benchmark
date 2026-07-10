@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "run_01JEXAMPLE",
+  "task": {
+    "id": "react-orders-filter-017",
+    "version": 1
+  },
+  "agent": {
+    "name": "example-agent",
+    "version": "0.1.0"
+  },
+  "model": {
+    "provider": "example",
+    "name": "example-model"
+  },
+  "valid": true,
+  "solved": true,
+  "scores": {
+    "build": 1.0,
+    "functional": 0.94,
+    "visual": 0.82,
+    "responsive": 0.88,
+    "accessibility": 0.76,
+    "engineering": 0.85,
+    "performance": 0.9
+  },
+  "efficiency": {
+    "inputTokens": 182400,
+    "outputTokens": 23100,
+    "toolCalls": 64,
+    "wallTimeSeconds": 487,
+    "costUsd": 1.84
+  },
+  "failures": [
+    {
+      "category": "accessibility",
+      "code": "FOCUS_NOT_RESTORED",
+      "severity": "medium"
+    }
+  ],
+  "artifacts": {
+    "patch": "patch.diff",
+    "events": "agent-events.jsonl",
+    "playwrightTrace": "playwright-trace.zip",
+    "screenshotsDir": "screenshots/"
+  }
+}

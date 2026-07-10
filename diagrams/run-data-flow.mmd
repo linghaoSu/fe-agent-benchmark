@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    participant U as User / CI
+    participant C as Run Coordinator
+    participant T as Task Registry
+    participant S as Sandbox
+    participant A as Coding Agent
+    participant M as LLM
+    participant B as Browser
+    participant E as Evaluator
+    participant R as Result Store
+
+    U->>C: 创建评测 Run
+    C->>T: 读取 Task 与 Suite
+    T-->>C: Task Bundle + Version
+    C->>S: 创建固定环境 Sandbox
+    C->>S: 注入公开代码与任务
+    C->>S: 只读挂载隐藏 Evaluator
+    C->>A: 启动 Agent
+
+    loop Agent 执行
+        A->>M: 上下文与工具请求
+        M-->>A: Tool Call / Response
+        alt 文件操作
+            A->>S: Read / Search / Edit
+            S-->>A: 文件结果
+        else Shell
+            A->>S: Install / Test / Build
+            S-->>A: stdout / stderr
+        else Browser
+            A->>B: Open / Click / Input / Inspect
+            B-->>A: DOM / Screenshot / Console / Network
+        end
+    end
+
+    A-->>C: 完成或预算耗尽
+    C->>S: 冻结工作区和最终 Patch
+    C->>E: 启动验证器流水线
+    E->>S: Integrity / Build
+    E->>B: Hidden E2E / Visual / A11y
+    E->>E: 聚合分项结果
+    E->>R: 保存 Result 与 Artifacts
+    R-->>C: Run Summary
+    C-->>U: 返回结果

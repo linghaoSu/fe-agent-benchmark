@@ -1,0 +1,68 @@
+id: react-orders-filter-017
+version: 1
+title: 订单搜索与状态筛选
+
+tags:
+  framework: react
+  language: typescript
+  taskType: feature
+  difficulty: 3
+  capabilities:
+    - repository-navigation
+    - async-state
+    - url-state
+    - responsive-ui
+    - accessibility
+
+environment:
+  image: frontend-agent-eval:node22-chromium
+  repositoryCommit: 4d23ab1
+  packageManager: pnpm
+  locale: zh-CN
+  timezone: Asia/Singapore
+  network: disabled
+
+viewports:
+  - name: desktop
+    width: 1440
+    height: 900
+  - name: tablet
+    width: 768
+    height: 1024
+  - name: mobile
+    width: 375
+    height: 812
+
+budget:
+  maxWallTimeSeconds: 900
+  maxAgentSteps: 120
+  maxCostUsd: 5
+
+permissions:
+  writablePaths:
+    - src/**
+    - tests/**
+  forbiddenPaths:
+    - evaluator/**
+    - references/**
+  allowDependencyChanges: false
+
+commands:
+  install: pnpm install --frozen-lockfile
+  typecheck: pnpm typecheck
+  lint: pnpm lint
+  test: pnpm test
+  build: pnpm build
+  start: pnpm preview --host 0.0.0.0
+
+evaluation:
+  requiredGates:
+    integrity: true
+    build: true
+    criticalFunctionalTests: true
+  weights:
+    functional: 0.50
+    visual: 0.20
+    responsive: 0.10
+    accessibility: 0.10
+    engineering: 0.10

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/task.schema.json",
+  "title": "Frontend Agent Evaluation Task",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "title",
+    "environment",
+    "budget",
+    "permissions",
+    "commands",
+    "evaluation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]+$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tags": {
+      "type": "object"
+    },
+    "environment": {
+      "type": "object"
+    },
+    "viewports": {
+      "type": "array"
+    },
+    "budget": {
+      "type": "object"
+    },
+    "permissions": {
+      "type": "object"
+    },
+    "commands": {
+      "type": "object"
+    },
+    "evaluation": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

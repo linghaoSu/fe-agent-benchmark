@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/result.schema.json",
+  "title": "Frontend Agent Evaluation Result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "task",
+    "valid",
+    "solved",
+    "scores",
+    "efficiency"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runId": {
+      "type": "string"
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      }
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "solved": {
+      "type": "boolean"
+    },
+    "scores": {
+      "type": "object"
+    },
+    "efficiency": {
+      "type": "object"
+    },
+    "failures": {
+      "type": "array"
+    },
+    "artifacts": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

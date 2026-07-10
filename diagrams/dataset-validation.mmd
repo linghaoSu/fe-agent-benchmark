@@ -1,0 +1,93 @@
+flowchart LR
+    subgraph TaskBundle["Task Bundle"]
+        Metadata["Metadata"]
+        Public["Agent-visible Data"]
+        Hidden["Evaluator-only Data"]
+        Reference["Reference Solutions"]
+        Mutation["Mutation Cases"]
+        Rubric["Rubric"]
+    end
+
+    subgraph PublicSet["公开数据"]
+        Prompt["task.md"]
+        Repo["Initial Repository"]
+        Assets["Design Assets"]
+        Smoke["Visible Smoke Tests"]
+        Docs["Project / Design System Docs"]
+    end
+
+    subgraph HiddenSet["隐藏验证数据"]
+        Behavior["Behavior Cases"]
+        Boundary["Boundary / Error Cases"]
+        Visual["Reference Screenshots"]
+        Geometry["DOM Geometry Rules"]
+        A11y["ARIA / Keyboard / axe"]
+        Perf["Performance Budget"]
+        Rules["Engineering Rules"]
+        AntiCheat["Integrity Rules"]
+    end
+
+    subgraph Calibration["校准数据"]
+        Gold["Gold Solution"]
+        Alternative["Alternative Correct Solution"]
+        Mutations["Known Broken Implementations"]
+        Human["Human Review Labels"]
+        Baseline["Baseline Agent Runs"]
+    end
+
+    subgraph Evaluators["Evaluators"]
+        I["Integrity"]
+        B["Build"]
+        F["Functional"]
+        V["Visual"]
+        A["Accessibility"]
+        P["Performance"]
+        C["Code Quality"]
+    end
+
+    Metadata --> Public
+    Metadata --> Hidden
+    Metadata --> Rubric
+
+    Public --> Prompt
+    Public --> Repo
+    Public --> Assets
+    Public --> Smoke
+    Public --> Docs
+
+    Hidden --> Behavior
+    Hidden --> Boundary
+    Hidden --> Visual
+    Hidden --> Geometry
+    Hidden --> A11y
+    Hidden --> Perf
+    Hidden --> Rules
+    Hidden --> AntiCheat
+
+    Reference --> Gold
+    Reference --> Alternative
+    Mutation --> Mutations
+
+    AntiCheat --> I
+    Repo --> B
+    Smoke --> B
+    Behavior --> F
+    Boundary --> F
+    Visual --> V
+    Geometry --> V
+    Assets --> V
+    A11y --> A
+    Perf --> P
+    Rules --> C
+
+    Gold --> Calibration
+    Alternative --> Calibration
+    Mutations --> Calibration
+    Human --> Calibration
+    Baseline --> Calibration
+
+    Calibration -.阈值与规则校准.-> F
+    Calibration -.阈值与规则校准.-> V
+    Calibration -.阈值与规则校准.-> A
+    Calibration -.阈值与规则校准.-> P
+    Calibration -.阈值与规则校准.-> C

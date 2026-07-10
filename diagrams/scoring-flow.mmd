@@ -1,0 +1,28 @@
+flowchart TD
+    Run["Agent Run"] --> Integrity{"Integrity Pass?"}
+    Integrity -- No --> Invalid["INVALID"]
+    Integrity -- Yes --> Build{"Build and Start Pass?"}
+    Build -- No --> FailedBuild["VALID but UNSOLVED"]
+    Build -- Yes --> Critical{"Critical Functional Tests Pass?"}
+    Critical -- No --> FailedFunctional["UNSOLVED"]
+    Critical -- Yes --> Score["Calculate Dimension Scores"]
+
+    Score --> Functional["Functional"]
+    Score --> Visual["Visual"]
+    Score --> Responsive["Responsive"]
+    Score --> A11y["Accessibility"]
+    Score --> Engineering["Engineering"]
+    Score --> Performance["Performance"]
+
+    Functional --> Quality["Quality Vector / Optional Weighted Score"]
+    Visual --> Quality
+    Responsive --> Quality
+    A11y --> Quality
+    Engineering --> Quality
+    Performance --> Quality
+
+    Quality --> Solved["SOLVED"]
+    Run --> Efficiency["Tokens / Cost / Time / Tool Calls"]
+    Solved --> Report["Run Result"]
+    Efficiency --> Report
+    Report --> Aggregate["Solved Rate / success@k / Stability / Cost Efficiency"]
