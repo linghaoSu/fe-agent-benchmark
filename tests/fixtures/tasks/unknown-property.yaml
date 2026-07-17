@@ -1,0 +1,38 @@
+schemaVersion: 1
+id: invalid-unknown-property
+version: 1
+title: Unknown property fixture
+unexpected: true
+environment:
+  image: test-image
+  repositoryCommit: abc123
+  packageManager: pnpm
+  locale: en-US
+  timezone: UTC
+  network: disabled
+budget:
+  maxWallTimeSeconds: 1
+  maxAgentSteps: 1
+  maxCostUsd: 0
+permissions:
+  writablePaths: []
+  forbiddenPaths: []
+  allowDependencyChanges: false
+commands:
+  install: pnpm install
+  typecheck: pnpm typecheck
+  lint: pnpm lint
+  test: pnpm test
+  build: pnpm build
+  start: pnpm start
+evaluation:
+  requiredGates:
+    integrity: true
+    build: true
+    criticalFunctionalTests: true
+  weights:
+    functional: 1
+    visual: 0
+    responsive: 0
+    accessibility: 0
+    engineering: 0

@@ -4,6 +4,7 @@
   "title": "Frontend Agent Evaluation Task",
   "type": "object",
   "required": [
+    "schemaVersion",
     "id",
     "version",
     "title",
@@ -14,6 +15,10 @@
     "evaluation"
   ],
   "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]+$"
@@ -27,26 +32,263 @@
       "minLength": 1
     },
     "tags": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taskType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "difficulty": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
     },
     "environment": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "image",
+        "repositoryCommit",
+        "packageManager",
+        "locale",
+        "timezone",
+        "network"
+      ],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositoryCommit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "packageManager": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "network": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     },
     "viewports": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "budget": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "maxWallTimeSeconds",
+        "maxAgentSteps",
+        "maxCostUsd"
+      ],
+      "properties": {
+        "maxWallTimeSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxAgentSteps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxCostUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
     },
     "permissions": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "writablePaths",
+        "forbiddenPaths",
+        "allowDependencyChanges"
+      ],
+      "properties": {
+        "writablePaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "forbiddenPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "allowDependencyChanges": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "commands": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "install",
+        "typecheck",
+        "lint",
+        "test",
+        "build",
+        "start"
+      ],
+      "properties": {
+        "install": {
+          "type": "string",
+          "minLength": 1
+        },
+        "typecheck": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test": {
+          "type": "string",
+          "minLength": 1
+        },
+        "build": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     },
     "evaluation": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "requiredGates",
+        "weights"
+      ],
+      "properties": {
+        "requiredGates": {
+          "type": "object",
+          "required": [
+            "integrity",
+            "build",
+            "criticalFunctionalTests"
+          ],
+          "properties": {
+            "integrity": {
+              "type": "boolean"
+            },
+            "build": {
+              "type": "boolean"
+            },
+            "criticalFunctionalTests": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "weights": {
+          "type": "object",
+          "required": [
+            "functional",
+            "visual",
+            "responsive",
+            "accessibility",
+            "engineering"
+          ],
+          "properties": {
+            "functional": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "visual": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "responsive": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "accessibility": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "engineering": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

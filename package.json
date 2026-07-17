@@ -1,0 +1,19 @@
+{
+  "name": "frontend-agent-benchmark",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -p packages/contracts/tsconfig.json && tsc -p apps/cli/tsconfig.json",
+    "eval": "pnpm --silent build && node apps/cli/dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.4",
+    "typescript": "5.9.3"
+  }
+}

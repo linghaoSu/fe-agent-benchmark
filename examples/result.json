@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "runId": "run_01JEXAMPLE",
+  "attemptId": "attempt_01JEXAMPLE_1",
+  "evaluatedSnapshotDigest": "sha256:example-snapshot-digest",
   "task": {
     "id": "react-orders-filter-017",
     "version": 1
@@ -15,14 +17,44 @@
   },
   "valid": true,
   "solved": true,
+  "evidenceRefs": {
+    "valid": [
+      "evaluator-results/integrity.json"
+    ],
+    "solved": [
+      "evaluator-results/build.json",
+      "evaluator-results/functional.json"
+    ]
+  },
   "scores": {
-    "build": 1.0,
-    "functional": 0.94,
-    "visual": 0.82,
-    "responsive": 0.88,
-    "accessibility": 0.76,
-    "engineering": 0.85,
-    "performance": 0.9
+    "build": {
+      "value": 1.0,
+      "evidenceRefs": ["evaluator-results/build.json"]
+    },
+    "functional": {
+      "value": 0.94,
+      "evidenceRefs": ["evaluator-results/functional.json"]
+    },
+    "visual": {
+      "value": 0.82,
+      "evidenceRefs": ["evaluator-results/visual.json", "screenshots/desktop.png"]
+    },
+    "responsive": {
+      "value": 0.88,
+      "evidenceRefs": ["evaluator-results/responsive.json"]
+    },
+    "accessibility": {
+      "value": 0.76,
+      "evidenceRefs": ["evaluator-results/accessibility.json"]
+    },
+    "engineering": {
+      "value": 0.85,
+      "evidenceRefs": ["evaluator-results/engineering.json"]
+    },
+    "performance": {
+      "value": 0.9,
+      "evidenceRefs": ["evaluator-results/performance.json"]
+    }
   },
   "efficiency": {
     "inputTokens": 182400,
@@ -35,13 +67,19 @@
     {
       "category": "accessibility",
       "code": "FOCUS_NOT_RESTORED",
-      "severity": "medium"
+      "severity": "medium",
+      "evidenceRefs": [
+        "evaluator-results/accessibility.json",
+        "playwright-trace.zip"
+      ]
     }
   ],
   "artifacts": {
     "patch": "patch.diff",
     "events": "agent-events.jsonl",
     "playwrightTrace": "playwright-trace.zip",
-    "screenshotsDir": "screenshots/"
+    "screenshotsDir": "screenshots/",
+    "evaluatorResultsDir": "evaluator-results/",
+    "manifest": "manifest.json"
   }
 }

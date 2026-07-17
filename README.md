@@ -2,6 +2,17 @@
 
 本资料包用于交给 Codex 或其他 Coding Agent，继续完善前端 Coding Agent 的评测系统设计与实现。
 
+## 实施规格优先级
+
+当前 MVP 的唯一实施依据按以下顺序读取：
+
+1. `.idea-to-ship/frontend-agent-benchmark/requirements.md`
+2. `.idea-to-ship/frontend-agent-benchmark/architecture.md`
+3. `.harness-engineering/frontend-agent-benchmark/harness-design.md`
+4. `.idea-to-ship/frontend-agent-benchmark/design-review.md`
+
+若与上述已批准产物冲突，`PLAN.md`、`CODEX_TASK.md` 和未被明确引用的历史资料只用于追溯，不得作为实现规格。尤其不得恢复隐藏 Evaluator 只读挂载、API/Dashboard、分布式 Worker 或其他已排除的 MVP 范围。
+
 ## 目标
 
 构建一个可重复、可扩展、可回归的前端 Coding Agent 测试平台，评测对象不仅是模型本身，而是：
@@ -15,15 +26,13 @@
 
 ## 建议阅读顺序
 
-1. `PLAN.md`：总体建设计划
-2. `CODEX_TASK.md`：交给 Codex 的完善任务
-3. `diagrams/architecture.mmd`：系统架构图
-4. `diagrams/run-data-flow.mmd`：单次运行数据流
-5. `diagrams/dataset-validation.mmd`：验证数据集结构
-6. `diagrams/scoring-flow.mmd`：评分流程
-7. `examples/task.yaml`：任务定义示例
-8. `examples/result.json`：结果数据示例
-9. `schemas/`：建议的数据模型草案
+1. `.idea-to-ship/frontend-agent-benchmark/requirements.md`：已批准需求
+2. `.idea-to-ship/frontend-agent-benchmark/architecture.md`：已批准架构
+3. `.harness-engineering/frontend-agent-benchmark/harness-design.md`：Harness 契约
+4. `.idea-to-ship/frontend-agent-benchmark/design-review.md`：当前评审状态与批准修复
+5. `diagrams/architecture.mmd`、`diagrams/run-data-flow.mmd`：canonical 运行图
+6. `examples/`、`schemas/`：当前契约夹具与迁移输入
+7. `PLAN.md`、`CODEX_TASK.md`：历史概念资料，仅作追溯
 
 ## 核心原则
 

@@ -1,5 +1,8 @@
 # 前端 Coding Agent 评测系统建设计划
 
+> **历史概念输入，非当前实施规格。**  
+> 当前 MVP 的范围、安全边界和实现顺序以 `.idea-to-ship/frontend-agent-benchmark/requirements.md`、`architecture.md`、`.harness-engineering/frontend-agent-benchmark/harness-design.md` 与当前 `design-review.md` 为准。本文保留用于追溯愿景与后续阶段，不得覆盖已批准的本地 CLI、host-only hidden Evaluator、默认拒绝网络和非 Dashboard MVP 边界。
+
 ## 1. 建设目标
 
 搭建一个面向前端开发场景的 Coding Agent 评测系统，用于：

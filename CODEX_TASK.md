@@ -1,5 +1,8 @@
 # 给 Codex 的完善任务
 
+> **历史概念输入，非当前实施规格。**  
+> 当前 MVP 必须以 `.idea-to-ship/frontend-agent-benchmark/requirements.md`、`architecture.md`、`.harness-engineering/frontend-agent-benchmark/harness-design.md` 和当前 `design-review.md` 为准。本文中的 API/Dashboard/分布式骨架、隐藏 Evaluator 只读挂载及任何相冲突范围均不得实现；保留本文件仅用于追溯最初问题与设计演变。
+
 你需要基于本资料包，继续完善“前端 Coding Agent 评测系统”。
 
 ## 你的工作目标

@@ -1,0 +1,8 @@
+{
+  "name": "@frontend-agent-benchmark/cli",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@frontend-agent-benchmark/contracts": "workspace:*"
+  }
+}

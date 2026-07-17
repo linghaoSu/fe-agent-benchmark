@@ -3,42 +3,110 @@ sequenceDiagram
     participant U as User / CI
     participant C as Run Coordinator
     participant T as Task Registry
-    participant S as Sandbox
-    participant A as Coding Agent
-    participant M as LLM
-    participant B as Browser
-    participant E as Evaluator
-    participant R as Result Store
+    participant D as SQLite / Artifact Store
+    participant S as Docker Sandbox
+    participant A as Trusted Agent Adapter
+    participant M as Configured Model Provider
+    participant E as Host Evaluator
+    participant B as Isolated Evaluator Browser
+    participant P as Controlled Package Proxy
+    participant X as Requester-safe Exporter
 
     U->>C: 创建评测 Run
-    C->>T: 读取 Task 与 Suite
-    T-->>C: Task Bundle + Version
-    C->>S: 创建固定环境 Sandbox
-    C->>S: 注入公开代码与任务
-    C->>S: 只读挂载隐藏 Evaluator
-    C->>A: 启动 Agent
+    C->>T: 读取不可变 Task / Suite 快照
+    T-->>C: Public Bundle + Host-only Evaluator ref + versions/checksum
+    C->>C: 静态预检锁文件、缓存快照、网络策略与数据卫生
+    alt 静态预检拒绝
+        C-->>U: PREFLIGHT_REJECTED（无 Attempt、无 Agent 样本）
+    else 静态预检通过
+        C->>D: 保存 canonical resolved input 与 Attempt 1
+        C->>S: 进入 SANDBOX_STARTING；创建默认拒绝网络
+        C->>P: trusted snapshot-bound proxy 健康/访问探测
+        P-->>C: 同 snapshot 的受信观测
+        alt proxy 瞬时不可用
+            C->>S: 清理 Sandbox 与网络
+            alt 已证明旧 Attempt 完全不存在
+                C->>D: 保存 Attempt 1 not_started/sandbox_starting + proxy diagnostic + Infrastructure producer evidence
+                C->>D: 从原始输入创建 Attempt 2
+                Note over C,S: Attempt 2 从 SANDBOX_STARTING 重新开始
+            else 缺席无法证明
+                C->>D: 保存 terminal / quarantined 结果
+                C-->>U: 返回不可重试基础设施失败
+            end
+        else proxy 可用
+            C->>A: 启动可信 Adapter（stdio JSONL）
+            loop Agent 执行阶段
+                A->>M: 宿主控制平面模型请求
+                M-->>A: 响应；仅持久化脱敏摘要
+                A->>C: 结构化 Tool Request
+                C->>C: 校验协议、权限与预算
+                C->>S: 执行文件 / Shell / Agent Browser 操作（默认拒绝）
+                S-->>C: 有界结果 + Artifact 引用
+                C-->>A: Tool Result
+            end
 
-    loop Agent 执行
-        A->>M: 上下文与工具请求
-        M-->>A: Tool Call / Response
-        alt 文件操作
-            A->>S: Read / Search / Edit
-            S-->>A: 文件结果
-        else Shell
-            A->>S: Install / Test / Build
-            S-->>A: stdout / stderr
-        else Browser
-            A->>B: Open / Click / Input / Inspect
-            B-->>A: DOM / Screenshot / Console / Network
+            alt 可信 Coordinator/proxy-side diagnostic 证实同 snapshot Agent install outage
+                C->>A: 停止活跃 Agent phase
+                C->>S: 清理容器、进程与两张网络
+                C->>D: 保存 Attempt 1 cancelled/agent + proxy diagnostic + infrastructure producer evidence
+                alt 已证明旧 Attempt 完全不存在
+                    C->>D: 从原始输入创建 Attempt 2
+                    Note over C,S: 从 SANDBOX_STARTING 重试；不得进入 hidden evaluation
+                else 缺席无法证明
+                    C->>D: 保存 terminal / quarantined 结果
+                    C-->>U: 返回不可重试基础设施失败
+                end
+            else Agent phase 完成或发生非代理项目失败
+                A-->>C: 完成 / 失败 / 预算耗尽
+                C->>A: 取消并关闭 Adapter
+                C->>S: 终止 Agent 子进程并删除 Agent Browser Profile
+                C->>S: 捕获 Patch，创建只读提交快照与 digest
+                C->>C: Phase barrier：进程/Agent+Evaluation 网络缺席、无隐藏数据、Tool Router 已关闭
+
+                alt Barrier 无法证明安全清理
+                    C->>S: 销毁或隔离 Sandbox
+                    alt 已证明旧 Attempt 完全不存在且错误可重试
+                        C->>D: 保存 Attempt Infrastructure producer evidence
+                        C->>D: 从原始输入创建 Attempt 2
+                    else 旧进程/容器/网络缺席无法证明
+                        C->>D: 保存 terminal / quarantined 结果
+                        C-->>U: 返回不可重试基础设施失败
+                    end
+                else Barrier 通过
+                    Note over E,S: 隐藏 Evaluator 源码始终只存在于可信宿主
+                    C->>E: 启动有序 Evaluator 流水线
+                    E->>S: 在默认拒绝网络的只读快照 COW overlay 中执行 Integrity / Build / Start
+                    S->>P: 仅允许锁定依赖的受控安装
+                    alt 可信 Coordinator/proxy-side diagnostic 证实同 snapshot Evaluator install outage
+                        C->>S: 停止 Evaluator phase；清理容器、进程与两张网络
+                        C->>D: 保留既有 Agent outcome + evaluation termination + proxy diagnostic + infrastructure producer evidence
+                        alt 已证明旧 Attempt 完全不存在
+                            C->>D: 从原始输入创建 Attempt 2
+                            Note over C,S: 从 SANDBOX_STARTING 重试；不得继续 partial hidden evaluation
+                        else 缺席无法证明
+                            C->>D: 保存 terminal / quarantined 结果
+                            C-->>U: 返回不可重试基础设施失败
+                        end
+                    else Evaluator 依赖就绪或发生非代理项目失败
+                        E->>B: 启动全新隔离 Browser；应用、COW 命令与 Browser 同样默认拒绝
+                        B->>S: Hidden Functional / Visual / A11y 黑盒访问
+                        B-->>E: 私有 Evaluator Result + Artifact 引用
+                        E->>D: 保存 typed producer records 与 Artifacts
+                        C->>C: 聚合执行分类、门槛、质量向量与效率
+                        C->>D: isolated worker exact-checksum full-coverage scan → Finalize manifest → canonical Result → COMPLETED
+                        opt 请求者请求导出
+                            C->>X: 构建独立 requester-export-result
+                            X->>X: 删除私有码/message/evidence refs；映射粗粒度 public code
+                            alt policy、闭包与数据扫描通过
+                                X->>D: 写入 passed export manifest / audit
+                                X-->>U: 返回 requester-safe package
+                            else 导出拒绝
+                                X->>D: 写入 EXPORT_POLICY_DENIED audit（Run 保持 COMPLETED）
+                            end
+                        end
+                    end
+                end
+                C-->>U: 返回结果与维护者审计路径
+            end
         end
     end
-
-    A-->>C: 完成或预算耗尽
-    C->>S: 冻结工作区和最终 Patch
-    C->>E: 启动验证器流水线
-    E->>S: Integrity / Build
-    E->>B: Hidden E2E / Visual / A11y
-    E->>E: 聚合分项结果
-    E->>R: 保存 Result 与 Artifacts
-    R-->>C: Run Summary
-    C-->>U: 返回结果

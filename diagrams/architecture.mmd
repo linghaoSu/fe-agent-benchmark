@@ -1,90 +1,41 @@
-flowchart TB
-    subgraph ControlPlane["评测控制面"]
-        UI["管理后台 / CLI"]
-        Scheduler["任务调度器<br/>Run Coordinator"]
-        Config["配置中心<br/>Agent / 模型 / Prompt / 预算"]
-        Registry["任务仓库<br/>Task Registry"]
-        Suite["测试套件<br/>Benchmark / Regression"]
+flowchart LR
+    U["User / CI"] --> CLI["pnpm eval CLI"]
+
+    subgraph TH["可信维护者主机"]
+        C["Run Coordinator"]
+        DB["SQLite + private Artifact Store"]
+        A["Trusted Agent Adapter"]
+        E["Evaluator Controller / Assertions"]
+        P["Controlled dependency cache / package proxy"]
+        X["Requester-safe exporter"]
+        G{"Export policy / scan pass?"}
     end
 
-    subgraph AgentLayer["Agent 接入层"]
-        Adapter["Agent Adapter"]
-        Context["上下文管理器"]
-        Model["模型网关"]
-        Tools["Tool Router"]
+    MP["Configured remote model provider"]
+
+    subgraph AN["Per-Attempt network — default deny egress"]
+        SA["Agent Sandbox"]
+        SE["Evaluation COW overlay + App Server"]
+        MO["Mock API"]
+        EB["Untrusted Evaluator Browser runtime"]
     end
 
-    subgraph SandboxLayer["隔离执行环境"]
-        Sandbox["Ephemeral Sandbox<br/>Docker / Firecracker / K8s Job"]
-        Repo["代码仓库"]
-        Editor["文件编辑工具"]
-        Shell["Shell"]
-        Browser["Playwright / Chromium"]
-        Mock["Mock API"]
-        Policy["网络 / 文件 / 资源策略"]
-    end
+    CLI --> C
+    C --> DB
+    C <--> A
+    A --> MP
+    C --> SA
+    C --> SE
+    SA -.-> P
+    SE -.-> P
+    SA --> MO
+    SE --> MO
+    E --> EB
+    E --> SE
+    EB --> SE
+    DB -.-> X
+    X --> G
+    G -->|passed package| U
+    G -->|denied audit only| DB
 
-    subgraph Evaluation["验证器流水线"]
-        Integrity["Integrity"]
-        Build["Build / Typecheck / Lint"]
-        Functional["Functional E2E"]
-        Visual["Visual / Responsive"]
-        A11y["Accessibility"]
-        Performance["Performance"]
-        Engineering["Engineering"]
-        Judge["LLM / VLM Judge"]
-    end
-
-    subgraph Storage["数据与观测"]
-        Events["Agent Events"]
-        Artifacts["Artifact Store"]
-        Results["Result Store"]
-        Metrics["Metrics"]
-        Dashboard["Dashboard"]
-    end
-
-    UI --> Scheduler
-    Config --> Scheduler
-    Registry --> Scheduler
-    Suite --> Scheduler
-    Scheduler --> Adapter
-    Adapter --> Context
-    Context --> Model
-    Adapter --> Tools
-    Tools --> Editor
-    Tools --> Shell
-    Tools --> Browser
-
-    Scheduler --> Sandbox
-    Policy --> Sandbox
-    Sandbox --> Repo
-    Sandbox --> Editor
-    Sandbox --> Shell
-    Sandbox --> Browser
-    Sandbox --> Mock
-
-    Sandbox --> Integrity
-    Integrity --> Build
-    Build --> Functional
-    Functional --> Visual
-    Visual --> A11y
-    A11y --> Performance
-    Performance --> Engineering
-    Engineering --> Judge
-
-    Adapter --> Events
-    Sandbox --> Artifacts
-    Browser --> Artifacts
-    Integrity --> Results
-    Build --> Results
-    Functional --> Results
-    Visual --> Results
-    A11y --> Results
-    Performance --> Results
-    Engineering --> Results
-    Judge --> Results
-
-    Events --> Metrics
-    Artifacts --> Metrics
-    Results --> Metrics
-    Metrics --> Dashboard
+    style AN fill:#fff4e5,stroke:#c77d00

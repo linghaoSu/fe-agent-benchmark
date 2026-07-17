@@ -12,17 +12,16 @@ flowchart TD
     Score --> Responsive["Responsive"]
     Score --> A11y["Accessibility"]
     Score --> Engineering["Engineering"]
-    Score --> Performance["Performance"]
 
     Functional --> Quality["Quality Vector / Optional Weighted Score"]
     Visual --> Quality
     Responsive --> Quality
     A11y --> Quality
     Engineering --> Quality
-    Performance --> Quality
-
     Quality --> Solved["SOLVED"]
     Run --> Efficiency["Tokens / Cost / Time / Tool Calls"]
+    Run --> Performance["Optional raw Performance diagnostics (non-gating)"]
     Solved --> Report["Run Result"]
     Efficiency --> Report
+    Performance --> Report
     Report --> Aggregate["Solved Rate / success@k / Stability / Cost Efficiency"]
