@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -182,7 +183,7 @@ test("GATE-V2.2-003: scripted disallowed and escaping requests are durable denia
         { status: "rejected", errorCode: "TOOL_POLICY_DENIED" },
       );
     } finally {
-      rmSync(directory, { recursive: true });
+      removeTree(directory);
     }
   }
 });
@@ -223,7 +224,7 @@ test("GATE-V2.2-004: each budget emits its exact code and uses budget_exhausted 
       assert.equal(typeof outcome.result.efficiency.toolOutputBytes, "number");
       assert.equal(typeof outcome.result.efficiency.wallTimeSeconds, "number");
     } finally {
-      rmSync(directory, { recursive: true });
+      removeTree(directory);
     }
   }
 });
@@ -239,7 +240,7 @@ test("GATE-V2.2-004b: wall budget terminates a cooperative heartbeat-only Adapte
     assert.equal(outcome.toolCalls.length, 0);
     assert.equal(framePayload(outcome, "budget_update").extensions.code, "BUDGET_EXHAUSTED_WALL_TIME");
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -268,7 +269,7 @@ test("GATE-V2.2-005: oversized output becomes a maintainer-only Artifact referen
     assert.equal(outcome.result.efficiency.toolCalls, 1);
     assert.equal(outcome.result.efficiency.toolOutputBytes, 256);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -287,7 +288,7 @@ test("GATE-V2.2-006: tool output and Adapter stderr are redacted before any pers
     assert.match(persisted, /\[REDACTED:credential\]/);
     assert.match(readFileSync(join(outcome.attemptDirectory, "adapter.stderr.log"), "utf8"), /\[REDACTED:credential\]/);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -316,12 +317,12 @@ test("GATE-V2.2-007: Adapter host env is allowlisted and network overrides are r
       assert.equal(framePayload(denied, "tool_result").errorCode, "TOOL_ENV_OVERRIDE_DENIED");
       assert.equal(denied.attempt.agentOutcome, "completed");
     } finally {
-      rmSync(overrideDirectory, { recursive: true });
+      removeTree(overrideDirectory);
     }
   } finally {
     if (previous === undefined) delete process.env.FRONTEND_AGENT_HOST_ONLY;
     else process.env.FRONTEND_AGENT_HOST_ONLY = previous;
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -342,6 +343,6 @@ test("GATE-V2.2-008: tool_request and accepted tool_call rows exist before runne
     assert.equal(outcome.toolCalls[0].status, "completed");
     assert.equal(outcome.toolCalls[0].outcomeCode, "TOOL_SUCCEEDED");
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });

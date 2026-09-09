@@ -101,6 +101,9 @@ importers:
 
   packages/sandbox-docker:
     dependencies:
+      '@frontend-agent-benchmark/artifact-store-fs':
+        specifier: workspace:*
+        version: link:../artifact-store-fs
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../contracts

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -122,7 +123,7 @@ test("GATE-V2.1-001: mock subprocess completes with ordered frames and artifacts
       { direction: "coordinator_to_adapter", type: "tool_result" },
     ]);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -159,7 +160,7 @@ for (const [fixture, code] of faultCases) {
       )));
       assert.equal(JSON.parse(outcome.result.resultJson).solved, false);
     } finally {
-      rmSync(directory, { recursive: true });
+      removeTree(directory);
     }
   });
 }
@@ -176,7 +177,7 @@ test("GATE-V2.1-008: duplicate seq is ignored without terminating the session", 
     assert.deepEqual(inbound.map(({ seq }) => seq), [0, 1, 2, 3]);
     assert.equal(inbound.filter(({ type }) => type === "event").length, 1);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -193,6 +194,6 @@ test("GATE-V1.4-004: exporting a missing Run returns RUN_NOT_FOUND without an au
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM exports").get().count, 0);
     database.close();
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });

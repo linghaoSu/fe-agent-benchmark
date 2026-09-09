@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -46,6 +47,6 @@ test("GATE-V3.2-Docker: internal Attempt network permits only declared mock-api"
     const networks = await new DockerCliClient().listNetworks(`frontend-agent-benchmark.attempt=${context.attemptId}`);
     assert.deepEqual(networks, []);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });

@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@frontend-agent-benchmark/artifact-store-fs": "workspace:*",
     "@frontend-agent-benchmark/contracts": "workspace:*",
     "@frontend-agent-benchmark/tool-router": "workspace:*"
   }

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -130,6 +131,6 @@ test("GATE-V3.1-Docker: mock Adapter runs in a fresh locked-down real container"
       0,
     );
   } finally {
-    rmSync(root, { recursive: true });
+    removeTree(root);
   }
 });

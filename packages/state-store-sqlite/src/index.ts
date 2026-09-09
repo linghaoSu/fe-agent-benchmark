@@ -43,6 +43,10 @@ const attemptNetworkMigration = readFileSync(
   new URL("../migrations/007_attempt_network.sql", import.meta.url),
   "utf8",
 );
+const submissionSnapshotMigration = readFileSync(
+  new URL("../migrations/008_submission_snapshot.sql", import.meta.url),
+  "utf8",
+);
 const migrations: Migration[] = [
   {
     version: 1,
@@ -75,6 +79,7 @@ const migrations: Migration[] = [
     checksum: sha256(toolCallsMigration),
   },
   { version: 7, source: attemptNetworkMigration, checksum: sha256(attemptNetworkMigration) },
+  { version: 8, source: submissionSnapshotMigration, checksum: sha256(submissionSnapshotMigration) },
 ];
 
 export const EXECUTION_LEASE_NAME = "global-executor";
@@ -216,6 +221,7 @@ export interface AttemptRecord {
   createdAt: string;
   finishedAt: string | null;
   agentNetworkId: string | null;
+  submissionSnapshotDigest: string | null;
 }
 
 export interface AttemptTransition {
@@ -271,6 +277,7 @@ export interface AttemptRepository {
     producer?: CreateProducerRecordInput,
   ): AttemptRecord;
   setAgentNetworkId(attemptId: string, agentNetworkId: string): AttemptRecord;
+  setSubmissionSnapshotDigest(attemptId: string, submissionSnapshotDigest: string): AttemptRecord;
 }
 
 export interface ProducerRepository {
@@ -480,6 +487,7 @@ interface AttemptRow {
   created_at: string;
   finished_at: string | null;
   agent_network_id: string | null;
+  submission_snapshot_digest: string | null;
 }
 
 interface AttemptTransitionRow {
@@ -796,6 +804,7 @@ function attemptRecord(row: AttemptRow): AttemptRecord {
     createdAt: row.created_at,
     finishedAt: row.finished_at,
     agentNetworkId: row.agent_network_id,
+    submissionSnapshotDigest: row.submission_snapshot_digest,
   };
 }
 
@@ -1200,6 +1209,15 @@ class SqliteAttemptRepository implements AttemptRepository {
       WHERE attempt_id = ? AND agent_network_id IS NULL
     `).run(agentNetworkId, attemptId).changes;
     if (changed !== 1) throw new StateStoreError("AGENT_NETWORK_ID_IMMUTABLE", "Attempt network identity is already finalized");
+    return this.find(attemptId)!;
+  }
+
+  setSubmissionSnapshotDigest(attemptId: string, submissionSnapshotDigest: string): AttemptRecord {
+    const changed = this.database.prepare(`
+      UPDATE attempts SET submission_snapshot_digest = ?
+      WHERE attempt_id = ? AND submission_snapshot_digest IS NULL
+    `).run(submissionSnapshotDigest, attemptId).changes;
+    if (changed !== 1) throw new StateStoreError("SUBMISSION_SNAPSHOT_DIGEST_IMMUTABLE", "Submission snapshot digest is already finalized");
     return this.find(attemptId)!;
   }
 }

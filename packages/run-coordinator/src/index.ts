@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 import { ArtifactStoreFs } from "@frontend-agent-benchmark/artifact-store-fs";
 import {
@@ -85,6 +85,8 @@ export interface SandboxRuntime {
   start(context: PhaseContext): Promise<void>;
   capturePatch(context: PhaseContext): Promise<string>;
   cleanup(context: PhaseContext): Promise<void>;
+  snapshot?(context: PhaseContext, destination: string): Promise<string>;
+  freeze?(context: PhaseContext): Promise<string>;
   agentNetworkId?(context: PhaseContext): string | undefined;
 }
 
@@ -761,7 +763,20 @@ export class RunExecutor {
     let sandboxError: unknown;
     if (this.sandboxRuntime) {
       try {
+        const census = await this.sandboxRuntime.freeze?.(context);
+        if (census) this.artifacts.stage({
+          runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal,
+          logicalType: "process_census", mime: "application/json", relativePath: "process-census.json",
+          audience: "maintainer_only", producerRef: `attempt:${attempt.attemptId}:phase-barrier`, content: census,
+        });
         patch = await this.sandboxRuntime.capturePatch(context);
+        if (this.sandboxRuntime.snapshot) {
+          const digest = await this.sandboxRuntime.snapshot(
+            context,
+            join(this.artifacts.attemptStagingDirectory(attempt.runId, attempt.attemptId), "snapshot"),
+          );
+          this.store.attempts.setSubmissionSnapshotDigest(attempt.attemptId, digest);
+        }
       } catch (error) {
         sandboxError = error;
       }
@@ -778,7 +793,7 @@ export class RunExecutor {
         "FAILED",
         code,
         {
-          executionClassification: "infrastructure_error",
+          executionClassification: code === "SNAPSHOT_UNSAFE_ENTRY" || code === "SANDBOX_RESIDUAL_PROCESSES" ? "invalid" : "infrastructure_error",
           terminationCause: code,
           terminationPhase: "agent",
           failureCode: code,

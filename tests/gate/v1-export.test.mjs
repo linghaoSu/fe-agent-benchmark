@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -120,7 +121,7 @@ test("GATE-V1.4-001: requester export is schema-valid, checksum-bound, audited, 
       "SELECT * FROM exports WHERE export_id = ?",
     ).get(exported.exportId);
     auditDatabase.close();
-    assert.deepEqual(migrations, [1, 2, 3, 4, 5, 6, 7]);
+    assert.deepEqual(migrations, [1, 2, 3, 4, 5, 6, 7, 8]);
     assert.equal(audit.outcome, "passed");
     assert.equal(audit.failure_code, null);
     assert.equal(audit.public_result_checksum, sha256(readFileSync(resultPath)));
@@ -134,7 +135,7 @@ test("GATE-V1.4-001: requester export is schema-valid, checksum-bound, audited, 
     assert.equal(exportedBytes.includes("producerRef"), false);
     assert.equal(exportedBytes.includes("evidenceRefs"), false);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -165,7 +166,7 @@ test("GATE-V1.4-002: a non-completed Run is denied without files or a Run transi
     assert.equal(audit.public_result_checksum, null);
     assert.equal(audit.manifest_hash, null);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -224,6 +225,6 @@ test("GATE-V1.4-003: credential denial is audited and a fixed re-export gets a n
       "passed",
     ]));
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });

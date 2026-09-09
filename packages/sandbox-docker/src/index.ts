@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, posix, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
+import { collectFrozenSnapshot } from "@frontend-agent-benchmark/artifact-store-fs";
 import { writablePathPrefixes } from "@frontend-agent-benchmark/contracts";
 import type { AllowedTool, WorkspaceRunner } from "@frontend-agent-benchmark/tool-router";
 
@@ -21,6 +22,7 @@ export const SANDBOX_IMAGE_UNAVAILABLE = "SANDBOX_IMAGE_UNAVAILABLE";
 export const SANDBOX_START_FAILED = "SANDBOX_START_FAILED";
 export const SANDBOX_PATCH_CAPTURE_FAILED = "SANDBOX_PATCH_CAPTURE_FAILED";
 export const SANDBOX_CLEANUP_FAILED = "SANDBOX_CLEANUP_FAILED";
+export const SANDBOX_RESIDUAL_PROCESSES = "SANDBOX_RESIDUAL_PROCESSES";
 export const NETWORK_POLICY_VIOLATION = "NETWORK_POLICY_VIOLATION";
 export const DEPENDENCY_PROXY_UNAVAILABLE = "DEPENDENCY_PROXY_UNAVAILABLE";
 export const WORKSPACE_WRITABLE_PATH_INVALID = "WORKSPACE_WRITABLE_PATH_INVALID";
@@ -589,6 +591,51 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         SANDBOX_PATCH_CAPTURE_FAILED,
         error instanceof Error ? error.message : "Patch capture failed",
       );
+    }
+  }
+
+  async freeze(context: SandboxAttemptContext): Promise<string> {
+    const state = this.states.get(context.attemptId);
+    if (!state?.containerId) throw new SandboxDockerError(SANDBOX_RESIDUAL_PROCESSES, "Agent container is unavailable for census");
+    const census = async (): Promise<string> => {
+      const result = await this.client.execContainer(state.containerId!, {
+        user: "0:0", workdir: "/", command: ["sh", "-lc", "ps -eo pid=,args="],
+      });
+      if (result.exitCode !== 0) throw new SandboxDockerError(SANDBOX_RESIDUAL_PROCESSES, "Process census failed");
+      return result.stdout;
+    };
+    const pre = await census();
+    const residual = (output: string) => output.split("\n").map((line) => {
+      const match = line.trim().match(/^(\d+)\s+(.+)$/);
+      // busybox ps re-renders "-eo pid=,args=" as "-eo pid= args=", so match the census loosely.
+      const isCensus = /\bps -eo pid=/.test(match?.[2] ?? "") || /\bsh -lc ps -eo pid=/.test(match?.[2] ?? "");
+      return match && !isCensus && !/\btrap .*sleep\b/.test(match[2]) && !/\bsleep 3600\b/.test(match[2]) ? match[1] : undefined;
+    }).filter((pid): pid is string => pid !== undefined && pid !== "1");
+    const preResidual = residual(pre);
+    if (preResidual.length) {
+      const pids = preResidual.join(" ");
+      await this.client.execContainer(state.containerId, { user: "0:0", workdir: "/", command: ["sh", "-lc", `kill -TERM ${pids} 2>/dev/null || true; sleep 1; kill -KILL ${pids} 2>/dev/null || true`] });
+    }
+    const post = await census();
+    if (residual(post).length) throw new SandboxDockerError(SANDBOX_RESIDUAL_PROCESSES, "Residual Agent processes remain after cleanup");
+    return JSON.stringify({ pre: pre.trim().split("\n").filter(Boolean), post: post.trim().split("\n").filter(Boolean) }) + "\n";
+  }
+
+  async snapshot(context: SandboxAttemptContext, destination: string): Promise<string> {
+    const state = this.states.get(context.attemptId);
+    if (!state) throw new SandboxDockerError(SANDBOX_PATCH_CAPTURE_FAILED, "Attempt workspace is unavailable");
+    const current = join(state.temporaryRoot, "snapshot-current");
+    try {
+      cpSync(this.bundlePath, current, { recursive: true });
+      for (const mount of state.writableMounts) {
+        const target = join(current, ...mount.prefix.split("/"));
+        rmSync(target, { recursive: true, force: true });
+        cpSync(mount.source, target, { recursive: true });
+      }
+      return collectFrozenSnapshot(current, destination, [...this.buildOutputPrefixes, "node_modules"]).digest;
+    } catch (error) {
+      if (error instanceof Error && "code" in error) throw error;
+      throw new SandboxDockerError("SNAPSHOT_UNSAFE_ENTRY", error instanceof Error ? error.message : "Snapshot collection failed");
     }
   }
 

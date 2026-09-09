@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   closeSync,
+  chmodSync,
   constants,
   existsSync,
   fsyncSync,
@@ -78,6 +79,47 @@ export interface ReconciliationReport {
 
 function sha256(value: string | Uint8Array): string {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+/** Copies only ordinary, single-linked files.  This is intentionally not cpSync:
+ * the source is produced by untrusted code and every component is lstat'ed first. */
+export function collectFrozenSnapshot(source: string, destination: string, excluded: string[] = []): {
+  digest: string;
+  excluded: string[];
+} {
+  const excludedSet = new Set(excluded);
+  const entries: string[] = [];
+  const walk = (from: string, to: string, relative: string): void => {
+    const stat = lstatSync(from);
+    if (stat.isSymbolicLink() || (stat.isFile() && stat.nlink > 1) || !stat.isFile() && !stat.isDirectory()) {
+      throw new ArtifactStoreError("SNAPSHOT_UNSAFE_ENTRY", `Unsafe snapshot entry ${relative || "."}`);
+    }
+    if (stat.isDirectory()) {
+      mkdirSync(to, { recursive: true, mode: stat.mode & 0o777 });
+      for (const name of readdirSync(from).sort()) {
+        if (!safeRelativePath(name)) throw new ArtifactStoreError("SNAPSHOT_UNSAFE_ENTRY", "Unsafe snapshot path");
+        const child = relative ? `${relative}/${name}` : name;
+        if (excludedSet.has(child) || [...excludedSet].some((prefix) => child.startsWith(`${prefix}/`))) continue;
+        walk(join(from, name), join(to, name), child);
+      }
+      return;
+    }
+    const bytes = readFileSync(from);
+    writeFileSync(to, bytes, { mode: stat.mode & 0o777 });
+    entries.push(`${relative}\0${sha256(bytes)}`);
+  };
+  walk(source, destination, "");
+  const digest = sha256(entries.sort().join("\n"));
+  atomicWrite(join(destination, "snapshot-manifest.json"), JSON.stringify({
+    excluded: [...excludedSet].sort(), digest, entries: entries.sort(),
+  }) + "\n");
+  const readonly = (path: string): void => {
+    const stat = lstatSync(path);
+    chmodSync(path, stat.mode & ~0o222);
+    if (stat.isDirectory()) for (const name of readdirSync(path)) readonly(join(path, name));
+  };
+  readonly(destination);
+  return { digest, excluded: [...excludedSet].sort() };
 }
 
 function safeIdentifier(value: string): boolean {
@@ -518,6 +560,14 @@ export class ArtifactStoreFs {
 
   private runDirectory(runId: string): string {
     return join(this.runsRoot, runId);
+  }
+
+  /** Directory that becomes `<run>/attempts/<ordinal>` at commit; non-Artifact trees (e.g. the frozen snapshot) may be placed here so they publish atomically with the manifest. */
+  attemptStagingDirectory(runId: string, attemptId: string): string {
+    if (!safeIdentifier(runId) || !safeIdentifier(attemptId)) {
+      throw new ArtifactStoreError("UNSAFE_ARTIFACT_PATH", "Invalid Run or Attempt identifier");
+    }
+    return this.stagingDirectory(runId, attemptId);
   }
 
   private stagingDirectory(runId: string, attemptId: string): string {

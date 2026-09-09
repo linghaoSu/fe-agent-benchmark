@@ -1,5 +1,12 @@
 # Implementation Log — frontend-agent-benchmark
 
+## 2026-09-09 — V3.3 phase barrier and immutable snapshot
+
+- The Agent boundary records a maintainer-only process census, materializes a
+  no-follow snapshot with a checksum-bound exclusion manifest, and persists its
+  digest on the Attempt. Unsafe entries and residual processes are terminal,
+  non-retryable outcomes; snapshots are recursively read-only.
+
 ## 2026-07-17 — V0 contracts and deterministic fixtures
 
 ### Scope

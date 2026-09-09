@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -95,7 +96,7 @@ test("GATE-V1.3-001: a live executor owns the global lease, heartbeats, and bloc
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -120,7 +121,7 @@ test("GATE-V1.3-002: a dead PID lease is taken over without weakening PID reuse 
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -160,7 +161,7 @@ test("GATE-V1.3-003: no-op execution finalizes checksum-bound artifacts, manifes
     assert.equal(result.result_checksum, sha256(resultBytes));
     assert.deepEqual(resultBytes, Buffer.from(result.result_json));
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -202,7 +203,7 @@ test("GATE-V1.3-004: doctor quarantines a crash before manifest publication", as
     assert.ok(doctor.issues.some(({ code }) => code === "PARTIAL_STAGING_QUARANTINED"));
     assert.equal(existsSync(join(directory, runId, ".tmp")), false);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -244,7 +245,7 @@ test("GATE-V1.3-005: doctor reports a published manifest missing its SQLite reco
     assert.equal(doctor.healthy, false);
     assert.ok(doctor.issues.some(({ code }) => code === "UNRECORDED_MANIFEST"));
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -269,7 +270,7 @@ test("GATE-V1.3-006: doctor regenerates corrupt and deleted result.json byte-ide
     assert.equal(repairedDeleted.healthy, true);
     assert.deepEqual(readFileSync(resultPath), canonical);
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -308,6 +309,6 @@ test("GATE-V1.3-007: artifact staging rejects parent traversal and symlink entri
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });

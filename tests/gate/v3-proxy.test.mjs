@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -65,7 +66,7 @@ test("GATE-V3.2-Proxy: fixture proxy is mounted, probed before agent, and regist
     assert.ok(client.events.findIndex((event) => event.startsWith("probe:")) < client.events.findIndex((event) => event === `create:${agent.name}`));
     await runtime.cleanup(context);
     assert.ok(client.events.indexOf(`remove:${agent.name}`) < client.events.indexOf(`remove:${proxy.name}`));
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test("GATE-V3.2-Proxy: unavailable proxy fails before the agent container is created", async () => {
@@ -82,7 +83,7 @@ test("GATE-V3.2-Proxy: unavailable proxy fails before the agent container is cre
     });
     await assert.rejects(runtime.start(context), { code: DEPENDENCY_PROXY_UNAVAILABLE });
     assert.equal(client.specs.filter(({ name }) => !name.endsWith("-package-proxy")).length, 0);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test("GATE-V3.2-Proxy: unavailable diagnostic is a trusted schema-valid record", async () => {
@@ -122,7 +123,7 @@ test("GATE-V3.2-Proxy: proxy preflight failure is finalized, retryable, and visi
       { logicalType: "proxy_diagnostic", audience: "maintainer_only" },
       { logicalType: "proxy_diagnostic", audience: "maintainer_only" },
     ]);
-  } finally { rmSync(directory, { recursive: true, force: true }); }
+  } finally { removeTree(directory); }
 });
 
 test("GATE-V3.2-Docker: npm ci installs the fixture tarball through only the internal package proxy", {
@@ -155,5 +156,5 @@ test("GATE-V3.2-Docker: npm ci installs the fixture tarball through only the int
     assert.match(await runtime.run("run_command", { command: "npm ci --ignore-scripts" }), /added 1 package/);
     await runtime.cleanup(context);
     assert.deepEqual(await new DockerCliClient().listNetworks(`frontend-agent-benchmark.attempt=${context.attemptId}`), []);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });

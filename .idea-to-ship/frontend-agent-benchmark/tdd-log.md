@@ -1,5 +1,11 @@
 # TDD Log — frontend-agent-benchmark
 
+## 2026-09-09 — V3.3 phase barrier red → green
+
+- Red: no immutable post-Agent workspace collector existed.
+- Green: `v3-barrier.test.mjs` proves deterministic digests, exclusions,
+  read-only snapshots, and unsafe-entry rejection.
+
 ## 2026-07-13 — V0 gate
 
 - Test ID: `GATE-V0-001`
@@ -333,3 +339,17 @@
   `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 87 passed /
   0 failed / 0 skipped, including GATE-V3.1-Docker, GATE-V3.2-Docker (network
   and npm ci) ; `pnpm -r build` and `pnpm check:generated` exit 0.
+- Follow-up verification (2026-09-09, Claude, Docker reachable): real-Docker
+  V3.1 gate failed twice after the V3.3 core landed. (1) The census matcher
+  compared against `ps -eo pid=,args=` but busybox re-renders its own argv as
+  `ps -eo pid= args=`, so the census process itself counted as residual and
+  every Attempt became `SANDBOX_RESIDUAL_PROCESSES`; matcher loosened. (2) The
+  snapshot was written straight to `<run>/attempts/<n>/snapshot`, so the
+  manifest-last rename found the final directory already present
+  (`ARTIFACT_FINAL_PATH_EXISTS`); the snapshot now lives inside the Attempt
+  staging directory via `ArtifactStoreFs.attemptStagingDirectory` and publishes
+  atomically with the manifest. Gate temp cleanup now restores write bits
+  before `rmSync` (`tests/gate/_cleanup.mjs`) because snapshots are `a-w`.
+  Migration-list assertions include 8.
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 91/91,
+  0 skipped, incl. all real-Docker gates; build and check:generated exit 0.

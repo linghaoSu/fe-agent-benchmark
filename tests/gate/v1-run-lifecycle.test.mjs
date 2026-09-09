@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { removeTree } from "./_cleanup.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -79,7 +80,7 @@ test("GATE-V1.2-001: no-op CLI executes the complete ordered lifecycle", () => {
       [{ kind: "evaluator", privateCode: "NOOP_EVALUATION_PASSED" }],
     );
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -155,7 +156,7 @@ test("GATE-V1.2-002: Agent fault fakes cross the evaluation barrier with orthogo
         store.close();
       }
     } finally {
-      rmSync(directory, { recursive: true });
+      removeTree(directory);
     }
   }
 });
@@ -198,7 +199,7 @@ test("GATE-V1.2-003: evaluator crashes are evaluator errors, not Agent failures"
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -253,7 +254,7 @@ test("GATE-V1.2-004: startup infrastructure failure retries once and refuses a t
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -292,7 +293,7 @@ test("GATE-V1.2-005: illegal execution transitions reject without changing durab
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -323,7 +324,7 @@ test("GATE-V1.2-006: agent outcome is write-once", async () => {
       store.close();
     }
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
 
@@ -359,6 +360,6 @@ test("GATE-V1.2-007: an interruption after a committed transition remains visibl
     assert.ok(!shown.transitions.some(({ toState }) => toState === "COMPLETED"));
     assert.ok(!shown.attemptTransitions.some(({ toState }) => toState === "EVALUATING"));
   } finally {
-    rmSync(directory, { recursive: true });
+    removeTree(directory);
   }
 });
