@@ -392,3 +392,31 @@
   expectations were corrected accordingly (`.env` outside `src/**` →
   OUTSIDE_WRITABLE; `package.json` under `**` with dependency changes
   disallowed → DEPENDENCY_CHANGE). Focused V4.1 gate 3/3.
+- 2026-09-09 V4.1b red → green: coordinator evaluation remained hard-wired to
+  `NoopEvaluator`; the pipeline now stages each evaluator result and derives
+  validity/build score from integrity/build outcomes. Focused evaluator gate:
+  3/3 green; root build and generated-schema check green. Docker acceptance is
+  blocked in this managed shell by an inaccessible OrbStack socket.
+- Follow-up verification (2026-09-09, Claude, Docker reachable): the V4.1b
+  wiring failed end-to-end five separate ways before the first real evaluated
+  Run: (1) the host copy of the `a-w` snapshot into the evaluation workspace was
+  itself read-only → EACCES on install (working copy is now chmod'd writable);
+  (2) `assertSnapshot` re-collected the snapshot into a temp dir and hit EACCES
+  on the copy — added `digestFrozenSnapshot` (walk + digest, no copy);
+  (3) `fixtureDirectory` was dropped from the packageProxy Task metadata so the
+  evaluation proxy container had no `/fixtures` mount → npm 404; (4) evaluation
+  command timeout was the 30s Agent wall budget → `spawnSync docker ETIMEDOUT`
+  on npm ci; now an independent 5-minute evaluation command timeout; (5) the
+  node-min lockfile/snapshot integrity hashes were typed by hand and did not
+  match the real tarball → npm "corrupted" — recomputed. Regressions fixed:
+  NoopEvaluator now echoes `context.snapshotDigest` (was a `noop:` literal that
+  tripped the new digest check → EVALUATOR_RESULT_INVALID on retry Attempts);
+  evaluator artifact names derive from `evaluatorId`, so noop id is `noop`;
+  an Attempt with no patch stages no patch.diff, so the CLI passes an empty
+  patch to Integrity instead of throwing ENOENT.
+- Real-Docker end-to-end on tests/fixtures/projects/node-min: `build-pass` →
+  valid=true solved=true scores.build=1 with install/typecheck/lint/test/build
+  logs; `build-break` → valid=true solved=false BUILD_TEST_FAILED;
+  `forbidden-write` → valid=false INTEGRITY_FORBIDDEN_PATH, build skipped.
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 101/101,
+  0 skipped; build and check:generated exit 0.

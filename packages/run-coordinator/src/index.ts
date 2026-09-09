@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
+import { chmodSync, cpSync, lstatSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { ArtifactStoreFs } from "@frontend-agent-benchmark/artifact-store-fs";
@@ -39,6 +41,11 @@ import {
   type ToolMetrics,
   type WorkspaceRunner,
 } from "@frontend-agent-benchmark/tool-router";
+import { digestFrozenSnapshot } from "@frontend-agent-benchmark/artifact-store-fs";
+import { EvaluatorPipeline } from "@frontend-agent-benchmark/evaluator-core";
+import { IntegrityEvaluator } from "@frontend-agent-benchmark/evaluator-integrity";
+import { BuildEvaluator } from "@frontend-agent-benchmark/evaluator-build";
+import { DockerSandboxRuntime } from "@frontend-agent-benchmark/sandbox-docker";
 
 export interface PhaseContext {
   runId: string;
@@ -71,10 +78,11 @@ export interface AgentPhase {
 
 export interface EvaluationPhaseContext extends PhaseContext {
   agentOutcome: Exclude<AgentOutcome, "not_started">;
+  snapshotDigest: string;
 }
 
 export interface EvaluationPhase {
-  run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult>;
+  run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult[]>;
 }
 
 export interface SandboxStartingPhase {
@@ -294,18 +302,18 @@ export class CancelledAgent implements AgentPhase {
 }
 
 export class NoopEvaluator implements EvaluationPhase {
-  async run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult> {
+  async run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult[]> {
     const producerId = `${context.attemptId}:noop-evaluator`;
     const result: FrontendAgentEvaluatorResult = {
       schemaVersion: 1,
       evaluatorResultId: `${context.attemptId}:noop-result`,
-      evaluatorId: "noop-evaluator",
+      evaluatorId: "noop",
       evaluatorVersion: "1",
       attemptId: context.attemptId,
       stage: "noop",
       deterministic: true,
       status: "passed",
-      evaluatedSnapshotDigest: `noop:${context.attemptId}`,
+      evaluatedSnapshotDigest: context.snapshotDigest,
       outcome: {
         passed: true,
         privateCode: "NOOP_EVALUATION_PASSED",
@@ -318,13 +326,72 @@ export class NoopEvaluator implements EvaluationPhase {
     if (!validateContractDocument(result, "evaluator-result").valid) {
       throw new RunCoordinatorError("EVALUATOR_RESULT_INVALID", "No-op evaluator result is invalid");
     }
-    return result;
+    return [result];
   }
 }
 
 export class CrashingEvaluator implements EvaluationPhase {
-  async run(): Promise<FrontendAgentEvaluatorResult> {
+  async run(): Promise<FrontendAgentEvaluatorResult[]> {
     throw new RunCoordinatorError("EVALUATOR_CRASH", "Evaluator crashed");
+  }
+}
+
+/** Runs untrusted build commands only in a fresh evaluation container. */
+function makeWritable(path: string): void {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink()) return;
+  chmodSync(path, stat.isDirectory() ? (stat.mode & 0o777) | 0o700 : (stat.mode & 0o777) | 0o600);
+  if (stat.isDirectory()) for (const name of readdirSync(path)) makeWritable(join(path, name));
+}
+
+export class PipelineEvaluationPhase implements EvaluationPhase {
+  constructor(private readonly options: {
+    artifacts: ArtifactStoreFs;
+    snapshotPath(context: EvaluationPhaseContext): string;
+    runtime(context: EvaluationPhaseContext, workspace: string): DockerSandboxRuntime;
+    patch: (context: EvaluationPhaseContext) => string;
+    policy: { writablePaths: string[]; forbiddenPaths: string[]; allowDependencyChanges: boolean };
+    commands: Partial<Record<"install" | "typecheck" | "lint" | "test" | "build", string>>;
+  }) {}
+  async run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult[]> {
+    const snapshot = this.options.snapshotPath(context);
+    const temporary = mkdtempSync(join(tmpdir(), "fab-evaluation-"));
+    const workspace = join(temporary, "workspace");
+    let runtime: DockerSandboxRuntime | undefined;
+    try {
+      // cpSync with dereference:false retains no-follow semantics; the frozen collector already rejected links.
+      cpSync(snapshot, workspace, { recursive: true, dereference: false, errorOnExist: true });
+      // The frozen snapshot is chmod a-w; the evaluation working copy must be writable for install/build outputs.
+      makeWritable(workspace);
+      runtime = this.options.runtime(context, workspace);
+      await runtime.start({ ...context, attemptId: `${context.attemptId}-eval` });
+      const digest = digestFrozenSnapshot(snapshot, ["snapshot-manifest.json"]);
+      const expected = context.snapshotDigest;
+      if (digest !== expected) throw new RunCoordinatorError("SNAPSHOT_DIGEST_CHANGED", "Frozen submission snapshot changed");
+      const pipeline = new EvaluatorPipeline([
+        new IntegrityEvaluator({ patch: this.options.patch(context), policy: this.options.policy }),
+        new BuildEvaluator({ commands: this.options.commands, run: async (command) => {
+          try { return { exitCode: 0, stdout: await runtime!.run("run_command", { command }), stderr: "" }; }
+          catch (error) { return { exitCode: 1, stdout: "", stderr: summary(error, "Build command failed") }; }
+        } }),
+      ]);
+      const output = await pipeline.run({
+        ...context, snapshotDigest: expected,
+        assertSnapshot: async () => {
+          const actual = digestFrozenSnapshot(snapshot, ["snapshot-manifest.json"]);
+          if (actual !== expected) throw new RunCoordinatorError("SNAPSHOT_DIGEST_CHANGED", "Frozen submission snapshot changed");
+        },
+        stageArtifact: (input) => this.options.artifacts.stage({
+          runId: context.runId, attemptId: context.attemptId, ordinal: context.ordinal,
+          logicalType: input.logicalType, mime: input.mime, relativePath: input.relativePath,
+          audience: "maintainer_only", producerRef: input.producerRef, content: input.content,
+        }).relativePath,
+      });
+      return output.results;
+    } finally {
+      if (runtime) await runtime.cleanup({ ...context, attemptId: `${context.attemptId}-eval` });
+      rmSync(temporary, { recursive: true, force: true });
+    }
   }
 }
 
@@ -462,6 +529,7 @@ export class RunExecutor {
   private leaseOwner?: LeaseOwner;
   private readonly onTransitionCommitted?: RunExecutorOptions["onTransitionCommitted"];
   private readonly attemptEfficiency = new Map<string, ToolMetrics>();
+  private readonly attemptEvaluation = new Map<string, FrontendAgentEvaluatorResult[]>();
 
   constructor(options: RunExecutorOptions) {
     this.store = options.store;
@@ -563,26 +631,26 @@ export class RunExecutor {
   }
 
   private finalizeResult(run: RunRecord, attempt: AttemptRecord): void {
-    const solved = attempt.executionClassification === "completed";
+    const evaluations = this.attemptEvaluation.get(attempt.attemptId) ?? [];
+    const integrity = evaluations.find((result) => result.evaluatorId === "integrity");
+    const build = evaluations.find((result) => result.evaluatorId === "build");
+    const valid = integrity ? integrity.status === "passed" : true;
+    const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed");
     const efficiency = this.attemptEfficiency.get(attempt.attemptId);
-    const evidenceRefs = [`attempts/${attempt.ordinal}/evaluator-results/noop.json`];
-    const score = { value: solved ? 1 : 0, evidenceRefs };
+    const evidenceRefs = evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`));
+    const score = { value: build?.status === "passed" ? 1 : 0, evidenceRefs: build?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs };
     const result: FrontendAgentEvaluationResult = {
       schemaVersion: 1,
       runId: run.runId,
       attemptId: attempt.attemptId,
-      evaluatedSnapshotDigest: `noop:${attempt.attemptId}`,
+      evaluatedSnapshotDigest: evaluations[0]?.evaluatedSnapshotDigest ?? `noop:${attempt.attemptId}`,
       task: { id: run.taskId, version: run.taskVersion },
-      valid: true,
+      valid,
       solved,
       evidenceRefs: { valid: evidenceRefs, solved: evidenceRefs },
       scores: {
         build: score,
-        functional: score,
-        visual: score,
-        responsive: score,
-        accessibility: score,
-        engineering: score,
+        functional: { value: 0, evidenceRefs }, visual: { value: 0, evidenceRefs }, responsive: { value: 0, evidenceRefs }, accessibility: { value: 0, evidenceRefs }, engineering: { value: 0, evidenceRefs },
       },
       efficiency: {
         inputTokens: 0,
@@ -592,7 +660,7 @@ export class RunExecutor {
         wallTimeSeconds: efficiency?.wallTimeSeconds ?? 0,
         costUsd: 0,
       },
-      extensions: { executionClassification: attempt.executionClassification },
+      extensions: { executionClassification: attempt.executionClassification, gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: "not_evaluated" } },
     };
     if (!validateContractDocument(result, "result").valid) {
       throw new RunCoordinatorError("RESULT_INVALID", "Canonical Result is invalid");
@@ -772,7 +840,7 @@ export class RunExecutor {
           logicalType: "process_census", mime: "application/json", relativePath: "process-census.json",
           audience: "maintainer_only", producerRef: `attempt:${attempt.attemptId}:phase-barrier`, content: census,
         });
-        patch = await this.sandboxRuntime.capturePatch(context);
+        patch = await this.sandboxRuntime.capturePatch(context) || patch;
         if (this.sandboxRuntime.snapshot) {
           const digest = await this.sandboxRuntime.snapshot(
             context,
@@ -827,14 +895,16 @@ export class RunExecutor {
     await this.transitionAttempt(attempt.attemptId, "WORKSPACE_FROZEN", "Workspace freeze completed");
     await this.transitionAttempt(attempt.attemptId, "EVALUATING", "Evaluation began");
 
-    let evaluationResult: FrontendAgentEvaluatorResult;
+    let evaluationResults: FrontendAgentEvaluatorResult[];
     try {
-      evaluationResult = await this.evaluator.run({
+      const frozenAttempt = this.store.attempts.find(attempt.attemptId)!;
+      const evaluated = await this.evaluator.run({
         ...context,
         agentOutcome: agentOutcome.agentOutcome,
+        snapshotDigest: frozenAttempt.submissionSnapshotDigest ?? `noop:${attempt.attemptId}`,
       });
-      const validation = validateContractDocument(evaluationResult, "evaluator-result");
-      if (!validation.valid || evaluationResult.attemptId !== attempt.attemptId) {
+      evaluationResults = Array.isArray(evaluated) ? evaluated : [evaluated as unknown as FrontendAgentEvaluatorResult];
+      if (!evaluationResults.length || evaluationResults.some((result) => !validateContractDocument(result, "evaluator-result").valid || result.attemptId !== attempt.attemptId || result.evaluatedSnapshotDigest !== (frozenAttempt.submissionSnapshotDigest ?? `noop:${attempt.attemptId}`))) {
         throw new RunCoordinatorError(
           "EVALUATOR_RESULT_INVALID",
           "Evaluator returned an invalid or mismatched result",
@@ -847,7 +917,7 @@ export class RunExecutor {
         "FAILED",
         code,
         {
-          executionClassification: "evaluator_error",
+          executionClassification: code === "SNAPSHOT_DIGEST_CHANGED" ? "invalid" : "evaluator_error",
           terminationCause: code,
           terminationPhase: "evaluation",
           failureCode: code,
@@ -862,33 +932,24 @@ export class RunExecutor {
         ),
       );
     }
+    if (evaluationResults.some((result) => result.status === "error")) {
+      return this.transitionAttempt(attempt.attemptId, "FAILED", "EVALUATOR_ERROR", {
+        executionClassification: "evaluator_error", terminationCause: "EVALUATOR_ERROR", terminationPhase: "evaluation", failureCode: "EVALUATOR_ERROR",
+      }, producer(attempt.attemptId, "evaluator", "evaluation", "EVALUATOR_ERROR", "Evaluator returned an error", evaluationResults.flatMap((result) => result.evidenceRefs)));
+    }
 
-    this.artifacts.stage({
-      runId: attempt.runId,
-      attemptId: attempt.attemptId,
-      ordinal: attempt.ordinal,
-      logicalType: "evaluator_result",
-      mime: "application/json",
-      relativePath: "evaluator-results/noop.json",
-      audience: "maintainer_only",
-      producerRef: evaluationResult.producerRef,
-      content: JSON.stringify(evaluationResult),
-    });
+    this.attemptEvaluation.set(attempt.attemptId, evaluationResults);
+    for (const evaluationResult of evaluationResults) {
+      if (!evaluationResult.evidenceRefs.includes(`evaluator-results/${evaluationResult.evaluatorId}.json`)) this.artifacts.stage({ runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal, logicalType: "evaluator_result", mime: "application/json", relativePath: `evaluator-results/${evaluationResult.evaluatorId}.json`, audience: "maintainer_only", producerRef: evaluationResult.producerRef, content: JSON.stringify(evaluationResult) });
+      this.store.producers.create({ producerId: evaluationResult.producerRef, attemptId: attempt.attemptId, kind: "evaluator", phase: "evaluation", privateCode: evaluationResult.outcome.privateCode, boundedSummary: evaluationResult.outcome.summary ?? "Evaluator completed", artifactRefs: evaluationResult.evidenceRefs });
+    }
 
     await this.transitionAttempt(
       attempt.attemptId,
       "FINALIZING",
       "Evaluation completed",
       undefined,
-      {
-        producerId: evaluationResult.producerRef,
-        attemptId: attempt.attemptId,
-        kind: "evaluator",
-        phase: "evaluation",
-        privateCode: evaluationResult.outcome.privateCode,
-        boundedSummary: evaluationResult.outcome.summary ?? "Evaluator completed",
-        artifactRefs: ["evaluator-results/noop.json"],
-      },
+      undefined,
     );
 
     this.artifacts.finalize(attempt.runId, attempt.attemptId, attempt.ordinal);

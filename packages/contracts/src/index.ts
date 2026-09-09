@@ -144,11 +144,14 @@ export interface PreflightedTaskBundle {
   permissions: {
     writablePaths: string[];
     forbiddenPaths: string[];
+    allowDependencyChanges: boolean;
   };
+  commands: { install: string; typecheck: string; lint: string; test: string; build: string };
+  buildOutputPaths: string[];
   dependencyLockHash: string;
   dependencyCacheSnapshotId: string;
   mockApi?: { image: string; command: string[]; port: number };
-  packageProxy?: { image: string; command: string[]; port: number };
+  packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory?: string };
   proxyConfigurationHash: string;
 }
 
@@ -781,6 +784,8 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
   const budgets = task.budget;
   const permissions = task.permissions;
   const environment = task.environment;
+  const commands = task.commands;
+  const evaluation = task.evaluation;
   const extensions = task.extensions;
   const snapshotReference = isRecord(extensions)
     ? extensions.dependencyCacheSnapshot
@@ -809,6 +814,9 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     || !permissions.writablePaths.every((value) => typeof value === "string")
     || !Array.isArray(permissions.forbiddenPaths)
     || !permissions.forbiddenPaths.every((value) => typeof value === "string")
+    || typeof permissions.allowDependencyChanges !== "boolean"
+    || !isRecord(commands)
+    || !["install", "typecheck", "lint", "test", "build"].every((name) => typeof commands[name] === "string")
     || typeof snapshot.lockfileHash !== "string"
     || typeof snapshot.dependencyCacheSnapshotId !== "string"
     || typeof snapshot.imageDigest !== "string"
@@ -831,7 +839,10 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     permissions: {
       writablePaths: permissions.writablePaths,
       forbiddenPaths: permissions.forbiddenPaths,
+      allowDependencyChanges: permissions.allowDependencyChanges,
     },
+    commands: { install: commands.install as string, typecheck: commands.typecheck as string, lint: commands.lint as string, test: commands.test as string, build: commands.build as string },
+    buildOutputPaths: isRecord(evaluation) && Array.isArray(evaluation.buildOutputPaths) ? evaluation.buildOutputPaths.filter((value): value is string => typeof value === "string") : [],
     dependencyLockHash: snapshot.lockfileHash,
     dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId,
     proxyConfigurationHash: snapshot.proxyConfigurationHash,
@@ -855,6 +866,9 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
           image: environment.packageProxy.image,
           command: environment.packageProxy.command,
           port: environment.packageProxy.port,
+          ...(typeof environment.packageProxy.fixtureDirectory === "string"
+            ? { fixtureDirectory: environment.packageProxy.fixtureDirectory }
+            : {}),
         } }
       : {}),
   };

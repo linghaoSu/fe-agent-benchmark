@@ -116,6 +116,18 @@ importers:
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-build':
+        specifier: workspace:*
+        version: link:../evaluator-build
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+      '@frontend-agent-benchmark/evaluator-integrity':
+        specifier: workspace:*
+        version: link:../evaluator-integrity
+      '@frontend-agent-benchmark/sandbox-docker':
+        specifier: workspace:*
+        version: link:../sandbox-docker
       '@frontend-agent-benchmark/state-store-sqlite':
         specifier: workspace:*
         version: link:../state-store-sqlite

@@ -498,3 +498,23 @@
 - Test-first red: missing V4 gate file.
 - Focused green: `pnpm -r build`; `node --test --test-concurrency=1
   tests/gate/v4-evaluators.test.mjs`; `pnpm check:generated`.
+
+## 2026-09-09 — V4.1b evaluator pipeline wiring
+
+### Scope and decisions
+
+- Added the pipeline evaluation phase: it copies the frozen snapshot into a
+  separate evaluation workspace, starts an attempt-suffixed Docker runtime,
+  checks the immutable snapshot digest around untrusted build commands, stages
+  evaluator evidence, and always removes the evaluation runtime.
+- CLI defaults to `--evaluators pipeline` for Docker and preserves `noop` for
+  fake sandboxes. Result aggregation now derives `valid`, `solved`, build
+  score, evaluator digest, and explicit not-evaluated functional gate state.
+- Added the offline `node-min` fixture and mock build/forbidden-write scenarios.
+
+### Verification
+
+- `pnpm install`, `pnpm build`, focused V4 evaluator gates (3/3), and
+  `pnpm check:generated` passed.
+- Docker verification could not run: `docker info` reaches an OrbStack socket
+  but is denied by the managed execution sandbox (`operation not permitted`).

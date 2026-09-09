@@ -83,6 +83,30 @@ function sha256(value: string | Uint8Array): string {
 
 /** Copies only ordinary, single-linked files.  This is intentionally not cpSync:
  * the source is produced by untrusted code and every component is lstat'ed first. */
+/** Recomputes the frozen snapshot digest in place without copying; same walk, exclusion and safety rules as collectFrozenSnapshot. */
+export function digestFrozenSnapshot(source: string, excluded: string[] = []): string {
+  const excludedSet = new Set(excluded);
+  const entries: string[] = [];
+  const walk = (from: string, relative: string): void => {
+    const stat = lstatSync(from);
+    if (stat.isSymbolicLink() || (stat.isFile() && stat.nlink > 1) || !stat.isFile() && !stat.isDirectory()) {
+      throw new ArtifactStoreError("SNAPSHOT_UNSAFE_ENTRY", `Unsafe snapshot entry ${relative || "."}`);
+    }
+    if (stat.isDirectory()) {
+      for (const name of readdirSync(from).sort()) {
+        if (!safeRelativePath(name)) throw new ArtifactStoreError("SNAPSHOT_UNSAFE_ENTRY", "Unsafe snapshot path");
+        const child = relative ? `${relative}/${name}` : name;
+        if (excludedSet.has(child) || [...excludedSet].some((prefix) => child.startsWith(`${prefix}/`))) continue;
+        walk(join(from, name), child);
+      }
+      return;
+    }
+    entries.push(`${relative}\0${sha256(readFileSync(from))}`);
+  };
+  walk(source, "");
+  return sha256(entries.sort().join("\n"));
+}
+
 export function collectFrozenSnapshot(source: string, destination: string, excluded: string[] = []): {
   digest: string;
   excluded: string[];

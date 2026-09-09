@@ -66,6 +66,7 @@ export type FrontendAgentEvaluationTask = {
       "accessibility": number;
       "engineering": number;
     };
+    "buildOutputPaths"?: Array<string>;
   };
   "extensions"?: Record<string, unknown>;
 };

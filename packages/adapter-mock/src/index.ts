@@ -31,6 +31,12 @@ const scenario = process.argv[2]
     } : process.argv[2] === "--docker-unsafe" ? {
       toolRequests: [{ toolCallId: "docker-unsafe", tool: "run_command", arguments: { command: "ln -s /etc/passwd evil; mkfifo pipe", cwd: "src" } }],
       patch: "",
+    } : process.argv[2] === "--build-pass" ? {
+      toolRequests: [{ toolCallId: "build-pass", tool: "write_file", arguments: { path: "src/index.mjs", content: "export const value = 2;\n" } }], patch: "",
+    } : process.argv[2] === "--build-break" ? {
+      toolRequests: [{ toolCallId: "build-break", tool: "write_file", arguments: { path: "src/index.mjs", content: "export const value = 0;\n" } }], patch: "",
+    } : process.argv[2] === "--forbidden-write" ? {
+      toolRequests: [{ toolCallId: "forbidden-write", tool: "write_file", arguments: { path: "scripts/check.mjs", content: "process.exit(1);\n" } }], patch: "diff --git a/scripts/check.mjs b/scripts/check.mjs\n--- a/scripts/check.mjs\n+++ b/scripts/check.mjs\n@@ -1 +1 @@\n-process.exit(0);\n+process.exit(1);\n",
     } : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {
       toolRequests?: Array<{ toolCallId: string; tool: string; arguments: Record<string, unknown> }>;
       reportEnv?: boolean;

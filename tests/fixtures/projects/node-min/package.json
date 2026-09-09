@@ -1,0 +1,1 @@
+{"name":"node-min","version":"1.0.0","type":"module","dependencies":{"@fixture/proxy-package":"1.0.0"},"scripts":{"typecheck":"node scripts/check.mjs","lint":"node scripts/lint.mjs","test":"node --test","build":"node scripts/build.mjs"}}

@@ -7,6 +7,8 @@ import {
   renameSync,
   rmSync,
   writeFileSync,
+  readFileSync,
+  existsSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
@@ -34,6 +36,7 @@ import {
 import {
   NoopAgent,
   NoopEvaluator,
+  PipelineEvaluationPhase,
   RunCoordinatorError,
   RunExecutor,
   SubprocessAgentPhase,
@@ -47,12 +50,14 @@ import {
   resolvePinnedImageReference,
 } from "@frontend-agent-benchmark/sandbox-docker";
 
+// Evaluation commands (install/test/build) are bounded independently of the Agent wall budget.
+const EVALUATION_COMMAND_TIMEOUT_MS = 5 * 60_000;
 const usage = [
   "Usage: pnpm eval validate <path>",
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario docker-residual|docker-unsafe] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|forbidden-write] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
@@ -177,6 +182,7 @@ function createRun(arguments_: string[]): boolean {
     seed,
     budgets: metadata.budgets,
     permissions: metadata.permissions,
+    evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths },
     sandbox: {
       runner: sandboxRunner,
       imageReference,
@@ -339,12 +345,13 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     !parsed
     || parsed.positionals.length !== 1
     || Object.keys(parsed.options).some((option) => (
-      option !== "--agent" && option !== "--mock-scenario" && option !== "--sandbox" && option !== "--db"
+      option !== "--agent" && option !== "--mock-scenario" && option !== "--evaluators" && option !== "--sandbox" && option !== "--db"
     ))
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
-      && parsed.options["--mock-scenario"] !== "docker-unsafe")
+      && !["docker-unsafe", "build-pass", "build-break", "forbidden-write"].includes(parsed.options["--mock-scenario"] as string))
+    || (parsed.options["--evaluators"] !== undefined && parsed.options["--evaluators"] !== "noop" && parsed.options["--evaluators"] !== "pipeline")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
       && parsed.options["--sandbox"] !== "docker")
@@ -358,7 +365,8 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     if (!storedRun) throw new StateStoreError("RUN_NOT_FOUND", `Run ${runId} was not found`);
     const resolved = JSON.parse(storedRun.resolvedInputJson) as {
       adapterProtocol?: { maxFrameBytes: number; heartbeatTimeoutSeconds: number };
-      permissions?: { writablePaths: string[]; forbiddenPaths: string[] };
+      permissions?: { writablePaths: string[]; forbiddenPaths: string[]; allowDependencyChanges: boolean };
+      evaluation?: { commands: { install: string; typecheck: string; lint: string; test: string; build: string }; buildOutputPaths: string[] };
       budgets?: { maxWallTimeSeconds: number };
       sandbox?: {
         runner: "fake" | "docker";
@@ -390,6 +398,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           bundlePath: task.path,
           writablePaths: resolved.permissions?.writablePaths ?? [],
           forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [],
+          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [],
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
           services: resolved.services,
@@ -419,11 +428,24 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           }) } } : {}),
         })
       : new NoopAgent();
+    const evaluatorMode = parsed.options["--evaluators"] ?? (sandbox ? "pipeline" : "noop");
+    const evaluator = evaluatorMode === "pipeline" ? new PipelineEvaluationPhase({
+      artifacts,
+      snapshotPath: (context) => `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/snapshot`,
+      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services }),
+      // An Attempt with no workspace changes stages no patch.diff; integrity then evaluates an empty patch.
+      patch: (context) => {
+        const path = `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/patch.diff`;
+        return existsSync(path) ? readFileSync(path, "utf8") : "";
+      },
+      policy: { writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], allowDependencyChanges: resolved.permissions?.allowDependencyChanges ?? false },
+      commands: resolved.evaluation?.commands ?? {},
+    }) : new NoopEvaluator();
     const run = await new RunExecutor({
       store,
       artifacts,
       agent,
-      evaluator: new NoopEvaluator(),
+      evaluator,
       ...(sandbox ? { sandboxRuntime: sandbox } : {}),
     }).execute(runId);
     console.log(JSON.stringify({ runId, status: run.status }));

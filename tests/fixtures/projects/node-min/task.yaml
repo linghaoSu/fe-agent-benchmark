@@ -1,0 +1,34 @@
+schemaVersion: 1
+id: node-min
+version: 1
+title: Offline Node fixture
+environment:
+  image: node:22-alpine
+  repositoryCommit: fixture
+  packageManager: npm
+  locale: en-US
+  timezone: UTC
+  network: controlled-proxy
+  packageProxy:
+    image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    port: 8080
+    fixtureDirectory: fixtures
+    command: [node, -e, "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>f.createReadStream(p.join('/fixtures',decodeURIComponent(q.url))).on('error',()=>{s.statusCode=404;s.end()}).pipe(s)).listen(8080)"]
+budget: { maxWallTimeSeconds: 60, maxAgentSteps: 4, maxCostUsd: 0 }
+permissions:
+  writablePaths: [src/**]
+  forbiddenPaths: [scripts/**]
+  allowDependencyChanges: false
+commands:
+  install: npm ci --ignore-scripts
+  typecheck: node scripts/check.mjs
+  lint: node scripts/lint.mjs
+  test: node --test
+  build: node scripts/build.mjs
+  start: node src/index.mjs
+evaluation:
+  requiredGates: { integrity: true, build: true, criticalFunctionalTests: true }
+  weights: { functional: 1, visual: 0, responsive: 0, accessibility: 0, engineering: 0 }
+  buildOutputPaths: [dist/**, node_modules/**]
+extensions:
+  dependencyCacheSnapshot: dependency-cache-snapshot.json
