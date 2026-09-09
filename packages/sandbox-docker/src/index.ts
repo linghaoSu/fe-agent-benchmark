@@ -130,6 +130,7 @@ interface AttemptState {
   networkId?: string;
   serviceContainerIds: string[];
   serviceHosts: string[];
+  frozen?: boolean;
 }
 
 function commandFailure(result: ReturnType<typeof spawnSync>, fallback: string): Error {
@@ -604,6 +605,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
       if (result.exitCode !== 0) throw new SandboxDockerError(SANDBOX_RESIDUAL_PROCESSES, "Process census failed");
       return result.stdout;
     };
+    state.frozen = true;
     const pre = await census();
     const residual = (output: string) => output.split("\n").map((line) => {
       const match = line.trim().match(/^(\d+)\s+(.+)$/);
@@ -614,7 +616,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const preResidual = residual(pre);
     if (preResidual.length) {
       const pids = preResidual.join(" ");
-      await this.client.execContainer(state.containerId, { user: "0:0", workdir: "/", command: ["sh", "-lc", `kill -TERM ${pids} 2>/dev/null || true; sleep 1; kill -KILL ${pids} 2>/dev/null || true`] });
+      // Capabilities are dropped, so exec-as-root lacks CAP_KILL; signal as the sandbox user that owns the processes.
+      await this.client.execContainer(state.containerId, { user: "1000:1000", workdir: "/", command: ["sh", "-c", `kill -TERM ${pids} 2>/dev/null || true; sleep 1; kill -KILL ${pids} 2>/dev/null || true`] });
     }
     const post = await census();
     if (residual(post).length) throw new SandboxDockerError(SANDBOX_RESIDUAL_PROCESSES, "Residual Agent processes remain after cleanup");
@@ -663,6 +666,10 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         error instanceof Error ? error.message : "Sandbox cleanup failed",
       );
     }
+  }
+
+  isFrozen(context: SandboxAttemptContext): boolean {
+    return this.states.get(context.attemptId)?.frozen === true;
   }
 
   private prepareWorkspace(attemptId: string): AttemptState {

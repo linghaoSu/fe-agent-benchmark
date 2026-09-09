@@ -52,7 +52,7 @@ const usage = [
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario docker-residual|docker-unsafe] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
@@ -339,9 +339,12 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     !parsed
     || parsed.positionals.length !== 1
     || Object.keys(parsed.options).some((option) => (
-      option !== "--agent" && option !== "--sandbox" && option !== "--db"
+      option !== "--agent" && option !== "--mock-scenario" && option !== "--sandbox" && option !== "--db"
     ))
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
+    || (parsed.options["--mock-scenario"] !== undefined
+      && parsed.options["--mock-scenario"] !== "docker-residual"
+      && parsed.options["--mock-scenario"] !== "docker-unsafe")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
       && parsed.options["--sandbox"] !== "docker")
@@ -400,12 +403,20 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             command: process.execPath,
             args: [
               new URL("../../../packages/adapter-mock/dist/index.js", import.meta.url).pathname,
-              ...(sandbox ? ["--docker-workspace"] : []),
+              ...(typeof parsed.options["--mock-scenario"] === "string"
+                ? [`--${parsed.options["--mock-scenario"]}`]
+                : sandbox ? ["--docker-workspace"] : []),
             ],
           },
           maxFrameBytes: protocol!.maxFrameBytes,
           heartbeatTimeoutMs: protocol!.heartbeatTimeoutSeconds * 1_000,
           ...(sandbox ? { runner: sandbox } : {}),
+          ...(sandbox ? { toolRouter: { isClosed: () => sandbox.isFrozen({
+            runId,
+            attemptId: store.attempts.list(runId).at(-1)?.attemptId ?? "",
+            ordinal: 0,
+            seed: 0,
+          }) } } : {}),
         })
       : new NoopAgent();
     const run = await new RunExecutor({

@@ -25,6 +25,12 @@ const scenario = process.argv[2]
         { toolCallId: "docker-protected", tool: "run_command", arguments: { command: "touch protected.txt" } },
       ],
       patch: "",
+    } : process.argv[2] === "--docker-residual" ? {
+      toolRequests: [{ toolCallId: "docker-residual", tool: "run_command", arguments: { command: "sleep 300 &", cwd: "src" } }],
+      patch: "",
+    } : process.argv[2] === "--docker-unsafe" ? {
+      toolRequests: [{ toolCallId: "docker-unsafe", tool: "run_command", arguments: { command: "ln -s /etc/passwd evil; mkfifo pipe", cwd: "src" } }],
+      patch: "",
     } : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {
       toolRequests?: Array<{ toolCallId: string; tool: string; arguments: Record<string, unknown> }>;
       reportEnv?: boolean;

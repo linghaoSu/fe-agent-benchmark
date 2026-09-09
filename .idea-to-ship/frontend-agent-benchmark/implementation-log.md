@@ -6,6 +6,11 @@
   no-follow snapshot with a checksum-bound exclusion manifest, and persists its
   digest on the Attempt. Unsafe entries and residual processes are terminal,
   non-retryable outcomes; snapshots are recursively read-only.
+- Deferred verification adds fake-client ordering/quarantine/retry gates,
+  closes ToolExecutor after the freeze barrier with `TOOL_ROUTER_CLOSED`, and
+  adds mock Docker residual-process and unsafe-entry scenarios. Cleanup failure
+  is retryable once as infrastructure; residual/unsafe outcomes remain invalid
+  and non-retryable. Real-Docker gates skip only on `DOCKER_UNAVAILABLE`.
 
 ## 2026-07-17 — V0 contracts and deterministic fixtures
 

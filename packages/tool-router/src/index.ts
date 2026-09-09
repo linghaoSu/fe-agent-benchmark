@@ -5,6 +5,7 @@ import { redactCredentials, redactCredentialValues } from "@frontend-agent-bench
 
 export const TOOL_POLICY_DENIED = "TOOL_POLICY_DENIED";
 export const TOOL_ENV_OVERRIDE_DENIED = "TOOL_ENV_OVERRIDE_DENIED";
+export const TOOL_ROUTER_CLOSED = "TOOL_ROUTER_CLOSED";
 export const BUDGET_EXHAUSTED_TOOL_CALLS = "BUDGET_EXHAUSTED_TOOL_CALLS";
 export const BUDGET_EXHAUSTED_OUTPUT = "BUDGET_EXHAUSTED_OUTPUT";
 export const BUDGET_EXHAUSTED_WALL_TIME = "BUDGET_EXHAUSTED_WALL_TIME";
@@ -209,6 +210,7 @@ export class ToolExecutor {
     runner: WorkspaceRunner;
     recorder: ToolCallRecorder;
     artifactWriter?: ToolArtifactWriter;
+    isClosed?: () => boolean;
     now?: () => number;
     startedAtMs?: number;
   }) {
@@ -225,6 +227,7 @@ export class ToolExecutor {
       acceptedAt,
     });
 
+    if (this.options.isClosed?.()) return this.finishResult(input, "rejected", TOOL_ROUTER_CLOSED, 0);
     const exhausted = this.exhaustedBeforeExecution();
     if (exhausted) return this.finishBudget(input, exhausted, 0);
     this.toolCalls += 1;

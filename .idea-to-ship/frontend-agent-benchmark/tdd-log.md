@@ -6,6 +6,19 @@
 - Green: `v3-barrier.test.mjs` proves deterministic digests, exclusions,
   read-only snapshots, and unsafe-entry rejection.
 
+## 2026-09-09 — V3.3 deferred verification red → green
+
+- Red: cleanup failure did not qualify for the documented single infrastructure
+  retry; the new `GATE-V3.3-005b` observed a terminal failed Run.
+- Green: the coordinator retries `SANDBOX_CLEANUP_FAILED` once; residual
+  processes remain terminal `invalid` and never retry.
+- Added fake-client gates for census ordering, clean-census no-kill, immutable
+  manifest exclusions, and a frozen ToolExecutor denial (`TOOL_ROUTER_CLOSED`)
+  without invoking its runner.
+- Added real-Docker residual-process and unsafe-entry gates. This environment
+  skipped them cleanly as `DOCKER_UNAVAILABLE` because OrbStack's socket denied
+  access.
+
 ## 2026-07-13 — V0 gate
 
 - Test ID: `GATE-V0-001`
@@ -353,3 +366,12 @@
   Migration-list assertions include 8.
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 91/91,
   0 skipped, incl. all real-Docker gates; build and check:generated exit 0.
+- Follow-up verification (2026-09-09, Claude, Docker reachable): the real-Docker
+  residual-process gate failed because the census kill step ran `kill` as
+  `0:0`; with `--cap-drop ALL` root lacks CAP_KILL over UID-1000 processes, so
+  the stray `sleep 300` survived and every such Attempt became
+  `SANDBOX_RESIDUAL_PROCESSES`. The kill now runs as the sandbox user
+  (`1000:1000`), which owns the processes. Verified in a live container.
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 98/98,
+  0 skipped, incl. both new real-Docker V3.3 scenarios; build and
+  check:generated exit 0. V3 stage complete.

@@ -136,6 +136,7 @@ export class SubprocessAgentPhase implements AgentPhase {
       outputCapBytes?: number;
       now?: () => number;
       startedAtMs?: number;
+      isClosed?: () => boolean;
     };
     toolHandler?: (frame: AdapterFrame) => Promise<RoutedToolResponse | Record<string, unknown>>
       | RoutedToolResponse
@@ -199,6 +200,7 @@ export class SubprocessAgentPhase implements AgentPhase {
       ...(this.options.toolRouter?.startedAtMs !== undefined
         ? { startedAtMs: this.options.toolRouter.startedAtMs }
         : {}),
+      ...(this.options.toolRouter?.isClosed ? { isClosed: this.options.toolRouter.isClosed } : {}),
     });
     const host = new SubprocessAdapterHost({
       command: this.options.command,
@@ -374,6 +376,7 @@ const ATTEMPT_TRANSITIONS: Record<AttemptLifecycleStatus, readonly AttemptLifecy
 const RETRYABLE_INFRASTRUCTURE_CODES = new Set([
   "DEPENDENCY_PROXY_UNAVAILABLE",
   "SANDBOX_START_FAILED",
+  "SANDBOX_CLEANUP_FAILED",
 ]);
 
 function summary(error: unknown, fallback: string): string {

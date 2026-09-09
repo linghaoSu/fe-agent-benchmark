@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { removeTree } from "./_cleanup.mjs";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -133,4 +133,31 @@ test("GATE-V3.1-Docker: mock Adapter runs in a fresh locked-down real container"
   } finally {
     removeTree(root);
   }
+});
+
+test("GATE-V3.3-Docker: residual processes are censused, killed, and snapshotted", {
+  skip: unavailable,
+  timeout: 120_000,
+}, async () => {
+  const root = mkdtempSync(join(tmpdir(), "frontend-agent-v33-docker-")); const databasePath = join(root, "eval.sqlite"); const bundle = prepareBundle(root);
+  try {
+    const created = successfulJson(cli("run", "create", bundle, "--seed", "7", "--sandbox", "docker", "--db", databasePath));
+    successfulJson(cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", "docker-residual", "--sandbox", "docker", "--db", databasePath));
+    const shown = successfulJson(cli("run", "show", created.runId, "--db", databasePath)); const attempt = shown.attempts[0]; const census = JSON.parse(readFileSync(join(root, created.runId, "attempts", "1", "process-census.json"), "utf8")); const snapshot = join(root, created.runId, "attempts", "1", "snapshot"); const manifest = JSON.parse(readFileSync(join(snapshot, "snapshot-manifest.json"), "utf8"));
+    assert.equal(attempt.agentOutcome, "completed"); assert.match(attempt.submissionSnapshotDigest, /^sha256:[a-f0-9]{64}$/); assert.ok(census.pre.some((line) => /sleep 300/.test(line))); assert.equal(census.post.some((line) => /sleep 300/.test(line)), false); assert.equal(manifest.digest, attempt.submissionSnapshotDigest); assert.equal(lstatSync(join(snapshot, "src", "input.js")).mode & 0o222, 0);
+  } finally { removeTree(root); }
+});
+
+test("GATE-V3.3-Docker: unsafe symlink and FIFO invalidate without retry or leftovers", {
+  skip: unavailable,
+  timeout: 120_000,
+}, async () => {
+  const root = mkdtempSync(join(tmpdir(), "frontend-agent-v33-unsafe-")); const databasePath = join(root, "eval.sqlite"); const bundle = prepareBundle(root); const { containerNameForAttempt } = await import(sandboxModule);
+  try {
+    const created = successfulJson(cli("run", "create", bundle, "--seed", "7", "--sandbox", "docker", "--db", databasePath));
+    successfulJson(cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", "docker-unsafe", "--sandbox", "docker", "--db", databasePath));
+    const shown = successfulJson(cli("run", "show", created.runId, "--db", databasePath)); const [attempt] = shown.attempts;
+    assert.deepEqual({ lifecycle: attempt.lifecycleStatus, classification: attempt.executionClassification, code: attempt.failureCode }, { lifecycle: "FAILED", classification: "invalid", code: "SNAPSHOT_UNSAFE_ENTRY" });
+    assert.equal(shown.attempts.length, 1); assert.notEqual(spawnSync("docker", ["container", "inspect", containerNameForAttempt(attempt.attemptId)]).status, 0); assert.equal(spawnSync("docker", ["network", "ls", "--filter", `label=frontend-agent-benchmark.attempt=${attempt.attemptId}`, "--format", "{{.ID}}"], { encoding: "utf8" }).stdout.trim(), "");
+  } finally { removeTree(root); }
 });
