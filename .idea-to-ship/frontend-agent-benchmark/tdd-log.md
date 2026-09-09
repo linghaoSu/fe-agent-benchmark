@@ -375,3 +375,20 @@
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 98/98,
   0 skipped, incl. both new real-Docker V3.3 scenarios; build and
   check:generated exit 0. V3 stage complete.
+## 2026-09-09 — V4.1 evaluator core red → green
+
+- Red: `node --test --test-concurrency=1 tests/gate/v4-evaluators.test.mjs`
+  failed because the V4 evaluator gate and evaluator packages did not exist.
+- Green: the new focused gate proves deterministic integrity classifications,
+  ordered prerequisite skip behavior, invalid plugin output conversion to
+  `EVALUATOR_RESULT_INVALID`, and first-failing build command behavior.
+- Focused verification: `pnpm -r build`, `node --test --test-concurrency=1
+  tests/gate/v4-evaluators.test.mjs`, and `pnpm check:generated` passed.
+- Follow-up (2026-09-09, Claude): the three new evaluator packages inherited
+  `noEmit: true` from the root tsconfig so `dist/` was never produced and all
+  V4.1 gates failed with ERR_MODULE_NOT_FOUND; tsconfigs now mirror the other
+  packages. `integrityCode` treats a bare `**` writable pattern as
+  match-everything so the dependency-change rule is reachable; the gate's
+  expectations were corrected accordingly (`.env` outside `src/**` →
+  OUTSIDE_WRITABLE; `package.json` under `**` with dependency changes
+  disallowed → DEPENDENCY_CHANGE). Focused V4.1 gate 3/3.

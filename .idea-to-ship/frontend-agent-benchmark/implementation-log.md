@@ -480,3 +480,21 @@
 - `pnpm install`, `pnpm -r build`, and `pnpm check:generated` passed. The
   serialized full gate suite began cleanly but did not reach its TAP summary
   before this managed host's 30-second command window; run it on a quieter host.
+## 2026-09-09 — V4.1 evaluator core (partial vertical slice)
+
+### Scope and decisions
+
+- Added `evaluator-core` with ordered plugin execution, prerequisite skips,
+  schema validation, stable evaluator error conversion, and maintainer-only
+  evaluator result staging.
+- Added deterministic `evaluator-integrity` patch policy checks and
+  `evaluator-build` ordered command execution with bounded logs.
+- Kept the existing coordinator/CLI `NoopEvaluator` path unchanged while the
+  pipeline-to-coordinator integration, COW evaluation Docker runtime, fixture,
+  and real-Docker acceptance gate are completed in the next vertical slice.
+
+### Verification
+
+- Test-first red: missing V4 gate file.
+- Focused green: `pnpm -r build`; `node --test --test-concurrency=1
+  tests/gate/v4-evaluators.test.mjs`; `pnpm check:generated`.
