@@ -85,7 +85,7 @@ test("GATE-V2.1-001: mock subprocess completes with ordered frames and artifacts
     }, { agentOutcome: "completed", executionClassification: "completed", failureCode: null });
     assert.deepEqual(JSON.parse(shown.run.resolvedInputJson).adapterProtocol, {
       maxFrameBytes: 65_536,
-      heartbeatTimeoutSeconds: 1,
+      heartbeatTimeoutSeconds: 5,
     });
 
     for (const direction of ["adapter_to_coordinator", "coordinator_to_adapter"]) {

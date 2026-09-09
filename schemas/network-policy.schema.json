@@ -54,6 +54,15 @@
               "browser_controller",
               "package_proxy"
             ]
+          },
+          "alias": {
+            "type": "string",
+            "minLength": 1
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
           }
         },
         "additionalProperties": false

@@ -194,6 +194,12 @@ function createRun(arguments_: string[]): boolean {
     },
     dependencyLockHash: metadata.dependencyLockHash,
     dependencyCacheSnapshotId: metadata.dependencyCacheSnapshotId,
+    proxyConfigurationHash: metadata.proxyConfigurationHash,
+    networkPolicyId: `network-policy:${checksum.bundleChecksum}`,
+    services: {
+      ...(metadata.mockApi ? { mockApi: metadata.mockApi } : {}),
+      ...(metadata.packageProxy ? { packageProxy: metadata.packageProxy } : {}),
+    },
   };
   const resolvedInputJson = JSON.stringify(resolvedInput);
   const inputHash = sha256(resolvedInputJson);
@@ -356,6 +362,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
         imageReference: string;
         resources: { memoryBytes: number; cpus: number; pidsLimit: number };
       };
+      services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
     };
     const protocol = resolved.adapterProtocol;
     if (parsed.options["--agent"] === "mock" && !protocol) {
@@ -382,6 +389,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [],
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
+          services: resolved.services,
         })
       : undefined;
     const agent = parsed.options["--agent"] === "mock"

@@ -147,6 +147,9 @@ export interface PreflightedTaskBundle {
   };
   dependencyLockHash: string;
   dependencyCacheSnapshotId: string;
+  mockApi?: { image: string; command: string[]; port: number };
+  packageProxy?: { image: string; command: string[]; port: number };
+  proxyConfigurationHash: string;
 }
 
 export function writablePathPrefixes(patterns: string[]): string[] | undefined {
@@ -809,6 +812,7 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     || typeof snapshot.lockfileHash !== "string"
     || typeof snapshot.dependencyCacheSnapshotId !== "string"
     || typeof snapshot.imageDigest !== "string"
+    || typeof snapshot.proxyConfigurationHash !== "string"
   ) {
     throw new Error("Preflighted Task Bundle metadata is invalid");
   }
@@ -830,5 +834,28 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     },
     dependencyLockHash: snapshot.lockfileHash,
     dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId,
+    proxyConfigurationHash: snapshot.proxyConfigurationHash,
+    ...(isRecord(environment.mockApi)
+      && typeof environment.mockApi.image === "string"
+      && Array.isArray(environment.mockApi.command)
+      && environment.mockApi.command.every((value) => typeof value === "string")
+      && typeof environment.mockApi.port === "number"
+      ? { mockApi: {
+          image: environment.mockApi.image,
+          command: environment.mockApi.command,
+          port: environment.mockApi.port,
+        } }
+      : {}),
+    ...(isRecord(environment.packageProxy)
+      && typeof environment.packageProxy.image === "string"
+      && Array.isArray(environment.packageProxy.command)
+      && environment.packageProxy.command.every((value) => typeof value === "string")
+      && typeof environment.packageProxy.port === "number"
+      ? { packageProxy: {
+          image: environment.packageProxy.image,
+          command: environment.packageProxy.command,
+          port: environment.packageProxy.port,
+        } }
+      : {}),
   };
 }

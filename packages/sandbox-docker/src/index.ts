@@ -21,6 +21,8 @@ export const SANDBOX_IMAGE_UNAVAILABLE = "SANDBOX_IMAGE_UNAVAILABLE";
 export const SANDBOX_START_FAILED = "SANDBOX_START_FAILED";
 export const SANDBOX_PATCH_CAPTURE_FAILED = "SANDBOX_PATCH_CAPTURE_FAILED";
 export const SANDBOX_CLEANUP_FAILED = "SANDBOX_CLEANUP_FAILED";
+export const NETWORK_POLICY_VIOLATION = "NETWORK_POLICY_VIOLATION";
+export const DEPENDENCY_PROXY_UNAVAILABLE = "DEPENDENCY_PROXY_UNAVAILABLE";
 export const WORKSPACE_WRITABLE_PATH_INVALID = "WORKSPACE_WRITABLE_PATH_INVALID";
 export const DEFAULT_PINNED_NODE_IMAGE = "node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2";
 
@@ -63,13 +65,19 @@ export interface DockerContainerSpec {
   image: string;
   user: string;
   workdir: string;
-  networkMode: "none";
+  networkMode: string;
+  networkAliases?: string[];
+  dns?: string[];
+  extraHosts?: string[];
   readOnlyRootfs: true;
   noNewPrivileges: true;
   resources: SandboxResources;
   mounts: DockerMount[];
   tmpfs: string[];
+  command?: string[];
 }
+
+export interface DockerNetworkSpec { name: string; internal: true; labels: Record<string, string> }
 
 export interface DockerExecSpec {
   command: string[];
@@ -91,6 +99,10 @@ export interface DockerClient {
   startContainer(id: string): Promise<void>;
   execContainer(id: string, spec: DockerExecSpec): Promise<DockerExecResult>;
   removeContainer(id: string): Promise<void>;
+  createNetwork(spec: DockerNetworkSpec): Promise<string>;
+  removeNetwork(id: string): Promise<void>;
+  listNetworks(label: string): Promise<string[]>;
+  containerNetworkIp(id: string, networkId: string): Promise<string>;
 }
 
 interface WritableMount {
@@ -104,6 +116,9 @@ interface AttemptState {
   publicBundle: string;
   writableMounts: WritableMount[];
   protectedMounts: WritableMount[];
+  networkId?: string;
+  serviceContainerIds: string[];
+  serviceHosts: string[];
 }
 
 function commandFailure(result: ReturnType<typeof spawnSync>, fallback: string): Error {
@@ -149,6 +164,9 @@ export class DockerCliClient implements DockerClient {
       "--pids-limit", String(spec.resources.pidsLimit),
     ];
     for (const tmpfs of spec.tmpfs) arguments_.push("--tmpfs", tmpfs);
+    for (const alias of spec.networkAliases ?? []) arguments_.push("--network-alias", alias);
+    for (const dns of spec.dns ?? []) arguments_.push("--dns", dns);
+    for (const host of spec.extraHosts ?? []) arguments_.push("--add-host", host);
     for (const mount of spec.mounts) {
       arguments_.push("--mount", [
         "type=bind",
@@ -157,7 +175,7 @@ export class DockerCliClient implements DockerClient {
         ...(mount.readOnly ? ["readonly"] : []),
       ].join(","));
     }
-    arguments_.push(spec.image, "sh", "-c", "trap 'exit 0' TERM INT; while :; do sleep 3600; done");
+    arguments_.push(spec.image, ...(spec.command ?? ["sh", "-c", "trap 'exit 0' TERM INT; while :; do sleep 3600; done"]));
     const result = spawnSync("docker", arguments_, {
       encoding: "utf8",
       maxBuffer: 4 * 1024 * 1024,
@@ -205,6 +223,34 @@ export class DockerCliClient implements DockerClient {
       throw commandFailure(result, "Docker container cleanup failed");
     }
   }
+
+  async createNetwork(spec: DockerNetworkSpec): Promise<string> {
+    const result = spawnSync("docker", ["network", "create", "--internal", "--label", ...Object.entries(spec.labels)
+      .flatMap(([key, value]) => [`${key}=${value}`]), spec.name], { encoding: "utf8", timeout: this.timeoutMs });
+    if (result.status !== 0) throw commandFailure(result, "Docker network creation failed");
+    return result.stdout.trim();
+  }
+
+  async removeNetwork(id: string): Promise<void> {
+    const result = spawnSync("docker", ["network", "rm", id], { encoding: "utf8", timeout: this.timeoutMs });
+    if (result.status !== 0 && !String(result.stderr).includes("No such network")) {
+      throw commandFailure(result, "Docker network cleanup failed");
+    }
+  }
+
+  async listNetworks(label: string): Promise<string[]> {
+    const result = spawnSync("docker", ["network", "ls", "--filter", `label=${label}`, "--format", "{{.ID}}"], { encoding: "utf8", timeout: this.timeoutMs });
+    if (result.status !== 0) throw commandFailure(result, "Docker network listing failed");
+    return result.stdout.split("\n").filter(Boolean);
+  }
+
+  async containerNetworkIp(id: string, networkId: string): Promise<string> {
+    // Docker keys NetworkSettings.Networks by network name, so match on the entry's NetworkID.
+    const result = spawnSync("docker", ["container", "inspect", "--format", `{{range .NetworkSettings.Networks}}{{if eq .NetworkID \"${networkId}\"}}{{.IPAddress}}{{end}}{{end}}`, id], { encoding: "utf8", timeout: this.timeoutMs });
+    const ip = result.stdout.trim();
+    if (result.status !== 0 || !ip) throw commandFailure(result, "Docker service network address is unavailable");
+    return ip;
+  }
 }
 
 export function resolvePinnedImageReference(input: {
@@ -234,6 +280,10 @@ export function containerNameForAttempt(attemptId: string): string {
   const safe = attemptId.replace(/[^a-zA-Z0-9_.-]/g, "-").slice(0, 48);
   const suffix = createHash("sha256").update(attemptId).digest("hex").slice(0, 10);
   return `fab-${safe}-${suffix}`;
+}
+
+export function networkNameForAttempt(attemptId: string): string {
+  return `${containerNameForAttempt(attemptId)}-network`;
 }
 
 function makeWritable(path: string): void {
@@ -289,6 +339,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     writablePaths: string[];
     forbiddenPaths?: string[];
     buildOutputPaths?: string[];
+    services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
     resources?: Partial<SandboxResources>;
     commandTimeoutMs?: number;
   }) {
@@ -300,6 +351,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     this.forbiddenPrefixes = validateWritablePaths(options.forbiddenPaths ?? []);
     this.buildOutputPrefixes = validateWritablePaths(options.buildOutputPaths ?? []);
     this.resources = { ...DEFAULT_RESOURCES, ...options.resources };
+    this.services = options.services;
     if (
       !Number.isSafeInteger(this.resources.memoryBytes) || this.resources.memoryBytes <= 0
       || !Number.isFinite(this.resources.cpus) || this.resources.cpus <= 0
@@ -307,6 +359,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
       || !Number.isFinite(this.commandTimeoutMs) || this.commandTimeoutMs <= 0
     ) throw new TypeError("Sandbox resource limits must be positive");
   }
+
+  private readonly services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
 
   async start(context: SandboxAttemptContext): Promise<void> {
     if (!PINNED_IMAGE.test(this.imageReference)) {
@@ -360,12 +414,40 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     }
 
     try {
+      if (this.services?.mockApi || this.services?.packageProxy) {
+        state.networkId = await this.client.createNetwork({
+          name: networkNameForAttempt(context.attemptId), internal: true,
+          labels: { "frontend-agent-benchmark.attempt": context.attemptId },
+        });
+        for (const [alias, service] of Object.entries({ "mock-api": this.services.mockApi, "package-proxy": this.services.packageProxy })) {
+          if (!service) continue;
+          const id = await this.client.createContainer({
+            name: `${containerNameForAttempt(context.attemptId)}-${alias}`,
+            image: service.image, user: "1000:1000", workdir: "/tmp", networkMode: state.networkId,
+            networkAliases: [alias], readOnlyRootfs: true, noNewPrivileges: true, resources: this.resources,
+            mounts: [], tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777"], command: service.command,
+          });
+          state.serviceContainerIds.push(id);
+          await this.client.startContainer(id);
+          state.serviceHosts.push(`${alias}:${await this.client.containerNetworkIp(id, state.networkId)}`);
+          if (alias === "package-proxy") {
+            const health = await this.client.execContainer(id, {
+              user: "1000:1000", workdir: "/tmp",
+              command: ["node", "-e", `fetch('http://127.0.0.1:${service.port}').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))`],
+            });
+            if (health.exitCode !== 0) {
+              throw new SandboxDockerError(DEPENDENCY_PROXY_UNAVAILABLE, "Controlled package proxy is unavailable");
+            }
+          }
+        }
+      }
       state.containerId = await this.client.createContainer({
         name: containerNameForAttempt(context.attemptId),
         image: this.imageReference,
         user: "1000:1000",
         workdir: "/workspace",
-        networkMode: "none",
+        networkMode: state.networkId ?? "none",
+        ...(state.networkId ? { dns: ["127.0.0.1"], extraHosts: state.serviceHosts } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
         resources: this.resources,
@@ -379,10 +461,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
       } catch (cleanupError) {
         throw cleanupError;
       }
-      throw new SandboxDockerError(
-        SANDBOX_START_FAILED,
-        error instanceof Error ? error.message : "Sandbox container failed to start",
-      );
+      if (error instanceof SandboxDockerError) throw error;
+      throw new SandboxDockerError(SANDBOX_START_FAILED, error instanceof Error ? error.message : "Sandbox container failed to start");
     }
   }
 
@@ -479,6 +559,13 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         await this.client.removeContainer(state.containerId);
         state.containerId = undefined;
       }
+      for (const id of state.serviceContainerIds.reverse()) await this.client.removeContainer(id);
+      if (state.networkId) {
+        await this.client.removeNetwork(state.networkId);
+        const remaining = await this.client.listNetworks(`frontend-agent-benchmark.attempt=${context.attemptId}`);
+        if (remaining.length) throw new Error("Attempt network still exists after cleanup");
+        state.networkId = undefined;
+      }
       rmSync(state.temporaryRoot, { recursive: true, force: true });
       this.states.delete(context.attemptId);
       if (this.activeAttemptId === context.attemptId) this.activeAttemptId = undefined;
@@ -519,7 +606,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         return { prefix, source };
       });
       for (const prefix of this.buildOutputPrefixes) ensureNestedTarget(prefix);
-      return { temporaryRoot, publicBundle, writableMounts, protectedMounts };
+      return { temporaryRoot, publicBundle, writableMounts, protectedMounts, serviceContainerIds: [], serviceHosts: [] };
     } catch (error) {
       rmSync(temporaryRoot, { recursive: true, force: true });
       throw error;
@@ -530,5 +617,9 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const state = this.activeAttemptId ? this.states.get(this.activeAttemptId) : undefined;
     if (!state?.containerId) throw new SandboxDockerError(SANDBOX_START_FAILED, "Sandbox is not running");
     return state;
+  }
+
+  agentNetworkId(context: SandboxAttemptContext): string | undefined {
+    return this.states.get(context.attemptId)?.networkId;
   }
 }

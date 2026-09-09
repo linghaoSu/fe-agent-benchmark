@@ -18,6 +18,16 @@ export type FrontendAgentEvaluationTask = {
     "locale": string;
     "timezone": string;
     "network": string;
+    "mockApi"?: {
+      "image": string;
+      "command": Array<string>;
+      "port": number;
+    };
+    "packageProxy"?: {
+      "image": string;
+      "command": Array<string>;
+      "port": number;
+    };
   };
   "viewports"?: Array<{
       "name": string;

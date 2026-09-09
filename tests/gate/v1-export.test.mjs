@@ -120,7 +120,7 @@ test("GATE-V1.4-001: requester export is schema-valid, checksum-bound, audited, 
       "SELECT * FROM exports WHERE export_id = ?",
     ).get(exported.exportId);
     auditDatabase.close();
-    assert.deepEqual(migrations, [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(migrations, [1, 2, 3, 4, 5, 6, 7]);
     assert.equal(audit.outcome, "passed");
     assert.equal(audit.failure_code, null);
     assert.equal(audit.public_result_checksum, sha256(readFileSync(resultPath)));

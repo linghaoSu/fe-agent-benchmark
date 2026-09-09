@@ -39,6 +39,10 @@ const toolCallsMigration = readFileSync(
   new URL("../migrations/006_tool_calls.sql", import.meta.url),
   "utf8",
 );
+const attemptNetworkMigration = readFileSync(
+  new URL("../migrations/007_attempt_network.sql", import.meta.url),
+  "utf8",
+);
 const migrations: Migration[] = [
   {
     version: 1,
@@ -70,6 +74,7 @@ const migrations: Migration[] = [
     source: toolCallsMigration,
     checksum: sha256(toolCallsMigration),
   },
+  { version: 7, source: attemptNetworkMigration, checksum: sha256(attemptNetworkMigration) },
 ];
 
 export const EXECUTION_LEASE_NAME = "global-executor";
@@ -210,6 +215,7 @@ export interface AttemptRecord {
   failureCode: string | null;
   createdAt: string;
   finishedAt: string | null;
+  agentNetworkId: string | null;
 }
 
 export interface AttemptTransition {
@@ -264,6 +270,7 @@ export interface AttemptRepository {
     outcome: Exclude<AgentOutcome, "not_started">,
     producer?: CreateProducerRecordInput,
   ): AttemptRecord;
+  setAgentNetworkId(attemptId: string, agentNetworkId: string): AttemptRecord;
 }
 
 export interface ProducerRepository {
@@ -472,6 +479,7 @@ interface AttemptRow {
   failure_code: string | null;
   created_at: string;
   finished_at: string | null;
+  agent_network_id: string | null;
 }
 
 interface AttemptTransitionRow {
@@ -787,6 +795,7 @@ function attemptRecord(row: AttemptRow): AttemptRecord {
     failureCode: row.failure_code,
     createdAt: row.created_at,
     finishedAt: row.finished_at,
+    agentNetworkId: row.agent_network_id,
   };
 }
 
@@ -1182,6 +1191,15 @@ class SqliteAttemptRepository implements AttemptRepository {
       }
       if (producer) insertProducer(this.database, producer);
     });
+    return this.find(attemptId)!;
+  }
+
+  setAgentNetworkId(attemptId: string, agentNetworkId: string): AttemptRecord {
+    const changed = this.database.prepare(`
+      UPDATE attempts SET agent_network_id = ?
+      WHERE attempt_id = ? AND agent_network_id IS NULL
+    `).run(agentNetworkId, attemptId).changes;
+    if (changed !== 1) throw new StateStoreError("AGENT_NETWORK_ID_IMMUTABLE", "Attempt network identity is already finalized");
     return this.find(attemptId)!;
   }
 }

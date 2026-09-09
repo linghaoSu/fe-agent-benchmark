@@ -10,7 +10,7 @@ environment:
   timezone: UTC
   network: controlled-proxy
 budget:
-  maxWallTimeSeconds: 1
+  maxWallTimeSeconds: 10
   maxAgentSteps: 1
   maxCostUsd: 0
 permissions:

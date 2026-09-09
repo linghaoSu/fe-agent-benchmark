@@ -10,7 +10,7 @@ import {
 
 export const ADAPTER_PROTOCOL_VERSION = 1;
 export const DEFAULT_MAX_FRAME_BYTES = 65_536;
-export const DEFAULT_HEARTBEAT_TIMEOUT_MS = 1_000;
+export const DEFAULT_HEARTBEAT_TIMEOUT_MS = 5_000;
 export const DEFAULT_CANCEL_GRACE_MS = 100;
 export const ADAPTER_HOST_ENV_ALLOWLIST = ["LANG", "LC_ALL", "TZ", "__CF_USER_TEXT_ENCODING"] as const;
 

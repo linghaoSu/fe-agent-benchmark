@@ -85,6 +85,7 @@ export interface SandboxRuntime {
   start(context: PhaseContext): Promise<void>;
   capturePatch(context: PhaseContext): Promise<string>;
   cleanup(context: PhaseContext): Promise<void>;
+  agentNetworkId?(context: PhaseContext): string | undefined;
 }
 
 export type CommittedTransition =
@@ -592,6 +593,35 @@ export class RunExecutor {
     await this.transitionAttempt(attempt.attemptId, "SANDBOX_STARTING", "Sandbox startup began");
     try {
       await this.sandboxStarting.run(context);
+      const networkId = this.sandboxRuntime?.agentNetworkId?.(context);
+      if (networkId) {
+        this.store.attempts.setAgentNetworkId(attempt.attemptId, networkId);
+        const resolved = JSON.parse(this.store.runs.find(attempt.runId)!.resolvedInputJson) as {
+          networkPolicyId?: string;
+          services?: { mockApi?: { port: number }; packageProxy?: { port: number } };
+        };
+        const policy = {
+          schemaVersion: 1,
+          networkPolicyId: resolved.networkPolicyId ?? `network-policy:${attempt.attemptId}`,
+          version: 1,
+          phase: "agent",
+          defaultAction: "deny",
+          allowedDestinations: [
+            ...(resolved.services?.mockApi ? [{ destinationId: "mock-api", kind: "mock_api", alias: "mock-api", port: resolved.services.mockApi.port }] : []),
+            ...(resolved.services?.packageProxy ? [{ destinationId: "package-proxy", kind: "package_proxy", alias: "package-proxy", port: resolved.services.packageProxy.port }] : []),
+          ],
+          violationCode: "NETWORK_POLICY_VIOLATION",
+          extensions: { agentNetworkId: networkId, deniedCategories: ["host_gateway", "loopback", "lan", "public_dns", "internet"] },
+        };
+        if (!validateContractDocument(policy, "network-policy").valid) {
+          throw new RunCoordinatorError("NETWORK_POLICY_INVALID", "Resolved network policy is invalid");
+        }
+        this.artifacts.stage({
+          runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal,
+          logicalType: "network_policy", mime: "application/json", relativePath: "network-policy.json",
+          audience: "maintainer_only", producerRef: `attempt:${attempt.attemptId}:network-policy`, content: JSON.stringify(policy),
+        });
+      }
     } catch (error) {
       let finalError = error;
       if (this.sandboxRuntime) {

@@ -55,6 +55,26 @@ class FakeDockerClient {
     this.actions.push(`remove:${id}`);
     if (this.removeError) throw this.removeError;
   }
+
+  async createNetwork(spec) {
+    this.actions.push(`network-create:${spec.name}`);
+    this.networkSpec = spec;
+    return "network-1";
+  }
+
+  async removeNetwork(id) {
+    this.actions.push(`network-remove:${id}`);
+  }
+
+  async listNetworks(label) {
+    this.actions.push(`network-list:${label}`);
+    return [];
+  }
+
+  async containerNetworkIp(id, networkId) {
+    this.actions.push(`network-ip:${id}:${networkId}`);
+    return "172.30.0.2";
+  }
 }
 
 function bundle() {
@@ -213,6 +233,32 @@ test("GATE-V3.1-004: only terminal directory-prefix writablePaths pass Task pref
     const result = preflightTaskBundle(directory);
     assert.equal(result.preflight, "rejected");
     assert.equal(result.codes[0].code, "WORKSPACE_WRITABLE_PATH_INVALID");
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("GATE-V3.2-001: declared services get a per-Attempt internal network and cleanup proves its absence", async () => {
+  const { DockerSandboxRuntime } = await import(sandboxModule);
+  const directory = bundle();
+  const client = new FakeDockerClient();
+  try {
+    const runtime = new DockerSandboxRuntime({
+      client, imageReference: PINNED_IMAGE, bundlePath: directory, writablePaths: ["src/**"],
+      services: { mockApi: { image: PINNED_IMAGE, command: ["sh", "-c", "sleep 60"], port: 8080 } },
+    });
+    await runtime.start(context);
+    assert.equal(runtime.agentNetworkId(context), "network-1");
+    assert.equal(client.networkSpec.internal, true);
+    assert.match(client.networkSpec.name, /^fab-attempt-1-[a-f0-9]{10}-network$/);
+    assert.deepEqual(client.networkSpec.labels, { "frontend-agent-benchmark.attempt": "attempt-1" });
+    assert.equal(client.createSpec.networkMode, "network-1");
+    assert.deepEqual(client.createSpec.networkAliases, undefined);
+    assert.deepEqual(client.createSpec.dns, ["127.0.0.1"]);
+    assert.deepEqual(client.createSpec.extraHosts, ["mock-api:172.30.0.2"]);
+    await runtime.cleanup(context);
+    assert.ok(client.actions.includes("network-remove:network-1"));
+    assert.ok(client.actions.includes("network-list:frontend-agent-benchmark.attempt=attempt-1"));
   } finally {
     rmSync(directory, { recursive: true });
   }

@@ -52,7 +52,7 @@ test("GATE-V1.1-001: migrates a fresh database and reopens idempotently", async 
     ).all();
     database.close();
 
-    assert.deepEqual(first.map(({ version }) => version), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(first.map(({ version }) => version), [1, 2, 3, 4, 5, 6, 7]);
     assert.match(first[0].checksum, /^sha256:[a-f0-9]{64}$/);
 
     openStateStore(databasePath).close();

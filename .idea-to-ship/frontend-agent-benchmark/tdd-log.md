@@ -282,3 +282,30 @@
   - `node --test tests/gate/*.test.mjs`: 79 passed / 0 failed / 1 skipped;
     the skip message names `DOCKER_UNAVAILABLE` and the denied OrbStack socket.
   - `pnpm check:generated`: passed, exit 0.
+
+## 2026-09-09 — V3.2 Attempt network lifecycle red → green
+
+- Red: the V3.1 fake Docker client had no network lifecycle and declared
+  services still used `--network none`.
+- Green: `GATE-V3.2-001` proves internal per-Attempt network creation, service
+  ordering, Agent attachment, persisted identity seam, and removal-plus-label
+  absence proof during cleanup. `v3-network.test.mjs` adds the real-Docker
+  alias and deny-probe gate.
+- Focused green: `node --test tests/gate/v3-sandbox-unit.test.mjs
+  tests/gate/v3-network.test.mjs` passed 5/5 and skipped the Docker gate as
+  `DOCKER_UNAVAILABLE` because this shell cannot access OrbStack.
+- Follow-up verification (2026-09-09, Claude): real-Docker `GATE-V3.2-Docker`
+  initially failed with `SANDBOX_START_FAILED` because
+  `containerNetworkIp` indexed `.NetworkSettings.Networks` by network ID while
+  Docker keys that map by network name; switched to a `range` + `NetworkID`
+  match and the gate passed (mock-api alias reachable; external IP, host
+  gateway and public DNS probes all denied). Migration-list assertions in
+  `v1-state-store` / `v1-export` bumped to include migration 7.
+- Flake mitigation: `DEFAULT_HEARTBEAT_TIMEOUT_MS` raised 1000 → 5000 and the
+  passing preflight fixture wall budget raised 1 → 10s (wall-budget gates set
+  their own `maxWallTimeMs`). Under sustained host load averages above ~100 the
+  mock adapter still needs >10s to emit its first frame (I/O-bound module load,
+  0.3s CPU), so V2.1/V2.2/V3.1-Docker gates remain load-sensitive; a quiet-host
+  full run is still required before declaring V3.2 network half complete.
+- Not yet implemented in this slice: fixture tarball package proxy install and
+  the stopped-proxy `DEPENDENCY_PROXY_UNAVAILABLE` preflight/retry path.

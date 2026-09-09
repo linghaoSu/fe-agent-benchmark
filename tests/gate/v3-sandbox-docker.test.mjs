@@ -37,7 +37,7 @@ function prepareBundle(root) {
   const taskPath = join(directory, "task.yaml");
   const task = readFileSync(taskPath, "utf8")
     .replace("image: synthetic-image", "image: node:22-alpine")
-    .replace("maxWallTimeSeconds: 1", "maxWallTimeSeconds: 30")
+    .replace("maxWallTimeSeconds: 10", "maxWallTimeSeconds: 30")
     .replace("maxAgentSteps: 1", "maxAgentSteps: 8")
     .replace("writablePaths: []", "writablePaths:\n    - src/**");
   writeFileSync(taskPath, task);
