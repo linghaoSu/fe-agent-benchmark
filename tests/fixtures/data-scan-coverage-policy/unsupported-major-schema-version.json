@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "dataScanCoveragePolicyId": "synthetic-scan-policy-001",
+  "version": 1,
+  "requiredSurfaces": [
+    "structured",
+    "text",
+    "archive_members",
+    "image_metadata",
+    "image_readable_text",
+    "type_specific_binary_handler"
+  ],
+  "limits": {
+    "maxArchiveDepth": 8,
+    "maxExpandedBytes": 1048576,
+    "maxEntries": 100,
+    "maxFileBytes": 1048576
+  },
+  "worker": {
+    "network": "denied",
+    "readOnlyInput": true,
+    "writableHostMount": false
+  },
+  "unsupportedOutcome": "fail_closed",
+  "unexpected": true
+}

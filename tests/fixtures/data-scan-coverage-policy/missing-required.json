@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "dataScanCoveragePolicyId": "synthetic-scan-policy-001",
+  "version": 1,
+  "limits": {
+    "maxArchiveDepth": 8,
+    "maxExpandedBytes": 1048576,
+    "maxEntries": 100,
+    "maxFileBytes": 1048576
+  },
+  "worker": {
+    "network": "denied",
+    "readOnlyInput": true,
+    "writableHostMount": false
+  },
+  "unsupportedOutcome": "fail_closed"
+}

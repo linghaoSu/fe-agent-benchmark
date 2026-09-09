@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/export-manifest.schema.json",
+  "title": "Frontend Agent Export Manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "exportManifestId",
+    "exportId",
+    "runId",
+    "audience",
+    "createdAt",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "exportManifestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exportId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audience": {
+      "const": "requester"
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifactId",
+          "path",
+          "sha256",
+          "mimeType",
+          "sizeBytes",
+          "audience",
+          "redactionStatus",
+          "dataScanStatus"
+        ],
+        "properties": {
+          "artifactId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/).+"
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "audience": {
+            "const": "requester_safe"
+          },
+          "redactionStatus": {
+            "const": "passed"
+          },
+          "dataScanStatus": {
+            "const": "passed"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "exportManifestId": "synthetic-export-manifest-001",
+  "exportId": "synthetic-export-001",
+  "runId": "synthetic-run-001",
+  "audience": "requester",
+  "createdAt": "2026-01-01T00:00:00Z"
+}

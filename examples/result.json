@@ -60,6 +60,7 @@
     "inputTokens": 182400,
     "outputTokens": 23100,
     "toolCalls": 64,
+    "toolOutputBytes": 482901,
     "wallTimeSeconds": 487,
     "costUsd": 1.84
   },
@@ -81,5 +82,6 @@
     "screenshotsDir": "screenshots/",
     "evaluatorResultsDir": "evaluator-results/",
     "manifest": "manifest.json"
-  }
+  },
+  "extensions": {}
 }

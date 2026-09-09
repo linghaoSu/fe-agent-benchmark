@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/attempt.schema.json",
+  "title": "Frontend Agent Evaluation Attempt",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "attemptId",
+    "runId",
+    "ordinal",
+    "seed",
+    "lifecycleStatus",
+    "agentOutcome"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "lifecycleStatus": {
+      "enum": [
+        "created",
+        "sandbox_starting",
+        "agent_running",
+        "agent_stopping",
+        "workspace_frozen",
+        "evaluating",
+        "finalizing",
+        "failed",
+        "succeeded"
+      ]
+    },
+    "agentOutcome": {
+      "enum": [
+        "not_started",
+        "completed",
+        "adapter_error",
+        "model_error",
+        "budget_exhausted",
+        "cancelled"
+      ]
+    },
+    "terminationCause": {
+      "type": "string",
+      "minLength": 1
+    },
+    "terminationPhase": {
+      "enum": [
+        "sandbox_starting",
+        "agent",
+        "evaluation"
+      ]
+    },
+    "executionClassification": {
+      "enum": [
+        "completed",
+        "agent_failure",
+        "budget_exhausted",
+        "invalid",
+        "infrastructure_error",
+        "evaluator_error"
+      ]
+    },
+    "failureCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agentNetworkId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluationNetworkId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "submissionSnapshotDigest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

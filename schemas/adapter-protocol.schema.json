@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/adapter-protocol.schema.json",
+  "title": "Frontend Agent Adapter Protocol Frame",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "protocolVersion",
+    "runId",
+    "attemptId",
+    "seq",
+    "type",
+    "timestamp",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "protocolVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "enum": [
+        "hello",
+        "ready",
+        "event",
+        "tool_request",
+        "complete",
+        "error",
+        "heartbeat",
+        "hello_ack",
+        "task_context",
+        "tool_result",
+        "cancel",
+        "budget_update",
+        "shutdown"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "type": "object"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "hello"
+        },
+        "payload": {
+          "$ref": "#/$defs/helloPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "ready"
+        },
+        "payload": {
+          "$ref": "#/$defs/readyPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "event"
+        },
+        "payload": {
+          "$ref": "#/$defs/eventPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool_request"
+        },
+        "payload": {
+          "$ref": "#/$defs/tool_requestPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "complete"
+        },
+        "payload": {
+          "$ref": "#/$defs/completePayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "error"
+        },
+        "payload": {
+          "$ref": "#/$defs/errorPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "heartbeat"
+        },
+        "payload": {
+          "$ref": "#/$defs/heartbeatPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "hello_ack"
+        },
+        "payload": {
+          "$ref": "#/$defs/hello_ackPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "task_context"
+        },
+        "payload": {
+          "$ref": "#/$defs/task_contextPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool_result"
+        },
+        "payload": {
+          "$ref": "#/$defs/tool_resultPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "cancel"
+        },
+        "payload": {
+          "$ref": "#/$defs/cancelPayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "budget_update"
+        },
+        "payload": {
+          "$ref": "#/$defs/budget_updatePayload"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "shutdown"
+        },
+        "payload": {
+          "$ref": "#/$defs/shutdownPayload"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "helloPayload": {
+      "type": "object",
+      "required": [
+        "adapter",
+        "capabilities"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "object",
+          "required": [
+            "id",
+            "version"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "readyPayload": {
+      "type": "object",
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "eventPayload": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "tool_requestPayload": {
+      "type": "object",
+      "required": [
+        "toolCallId",
+        "tool",
+        "arguments"
+      ],
+      "properties": {
+        "toolCallId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "completePayload": {
+      "type": "object",
+      "required": [
+        "outcome"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "completed",
+            "cancelled"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "patch": {
+          "type": "string"
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "errorPayload": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "heartbeatPayload": {
+      "type": "object",
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "hello_ackPayload": {
+      "type": "object",
+      "required": [
+        "accepted"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "task_contextPayload": {
+      "type": "object",
+      "required": [
+        "taskId",
+        "taskVersion"
+      ],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taskVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "tool_resultPayload": {
+      "type": "object",
+      "required": [
+        "toolCallId",
+        "status"
+      ],
+      "properties": {
+        "toolCallId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed",
+            "rejected"
+          ]
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "cancelPayload": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget_updatePayload": {
+      "type": "object",
+      "required": [
+        "remaining"
+      ],
+      "properties": {
+        "remaining": {
+          "type": "object",
+          "required": [
+            "wallTimeSeconds",
+            "steps",
+            "costUsd"
+          ],
+          "properties": {
+            "wallTimeSeconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "steps": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "costUsd": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "shutdownPayload": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@frontend-agent-benchmark/run-coordinator",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@frontend-agent-benchmark/adapter-protocol": "workspace:*",
+    "@frontend-agent-benchmark/artifact-store-fs": "workspace:*",
+    "@frontend-agent-benchmark/contracts": "workspace:*",
+    "@frontend-agent-benchmark/state-store-sqlite": "workspace:*",
+    "@frontend-agent-benchmark/tool-router": "workspace:*"
+  }
+}

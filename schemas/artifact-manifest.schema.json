@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/artifact-manifest.schema.json",
+  "title": "Frontend Agent Artifact Manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "artifactManifestId",
+    "attemptId",
+    "status",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "artifactManifestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "finalized"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifactId",
+          "logicalType",
+          "producerRef",
+          "mimeType",
+          "sizeBytes",
+          "sha256",
+          "path",
+          "status",
+          "audience",
+          "redactionStatus",
+          "dataScanStatus",
+          "scanMetadata"
+        ],
+        "properties": {
+          "artifactId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "logicalType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "producerRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/).+"
+          },
+          "status": {
+            "enum": [
+              "staged",
+              "finalized",
+              "not_applicable"
+            ]
+          },
+          "audience": {
+            "enum": [
+              "maintainer_only",
+              "requester_safe"
+            ]
+          },
+          "redactionStatus": {
+            "enum": [
+              "not_required",
+              "pending",
+              "passed",
+              "failed"
+            ]
+          },
+          "dataScanStatus": {
+            "enum": [
+              "pending",
+              "passed",
+              "failed"
+            ]
+          },
+          "scanMetadata": {
+            "type": "object",
+            "required": [
+              "scannedChecksum",
+              "scannerVersion",
+              "scannerWorkerDigest",
+              "coveragePolicyVersion",
+              "coverageOutcome"
+            ],
+            "properties": {
+              "scannedChecksum": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scannerVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scannerWorkerDigest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "coveragePolicyVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "coverageOutcome": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "unsupported"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "notApplicableReason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

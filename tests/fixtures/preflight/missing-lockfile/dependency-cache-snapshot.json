@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "dependencyCacheSnapshotId": "synthetic-preflight-cache",
+  "lockfileHash": "sha256:synthetic-lock",
+  "proxyConfigurationHash": "sha256:synthetic-proxy",
+  "imageDigest": "sha256:synthetic-image",
+  "createdAt": "2026-01-01T00:00:00Z",
+  "extensions": {
+    "packages": []
+  }
+}

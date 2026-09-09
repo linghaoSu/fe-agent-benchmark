@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "synthetic-suite-001",
+  "version": 1,
+  "type": "benchmark",
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "tasks": [
+    {
+      "taskId": "synthetic-task-001",
+      "version": 1,
+      "bundleChecksum": "sha256:1111"
+    }
+  ]
+}

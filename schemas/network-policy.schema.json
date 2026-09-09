@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/network-policy.schema.json",
+  "title": "Frontend Agent Network Policy",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "networkPolicyId",
+    "version",
+    "phase",
+    "defaultAction",
+    "allowedDestinations",
+    "violationCode"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "networkPolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "phase": {
+      "enum": [
+        "agent",
+        "evaluation"
+      ]
+    },
+    "defaultAction": {
+      "const": "deny"
+    },
+    "allowedDestinations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "destinationId",
+          "kind"
+        ],
+        "properties": {
+          "destinationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "mock_api",
+              "application",
+              "browser_controller",
+              "package_proxy"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "violationCode": {
+      "const": "NETWORK_POLICY_VIOLATION"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

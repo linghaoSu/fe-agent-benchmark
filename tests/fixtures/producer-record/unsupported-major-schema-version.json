@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "producerId": "synthetic-producer-001",
+  "attemptId": "synthetic-attempt-001",
+  "kind": "evaluator",
+  "phase": "evaluation",
+  "privateCode": "BUILD_PASSED",
+  "boundedSummary": "Synthetic build passed",
+  "artifactRefs": [
+    "synthetic-artifact-001"
+  ],
+  "unexpected": true
+}

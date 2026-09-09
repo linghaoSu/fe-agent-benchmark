@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/suite.schema.json",
+  "title": "Frontend Agent Evaluation Suite",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "suiteId",
+    "version",
+    "type",
+    "manifestChecksum",
+    "publishedAt",
+    "tasks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "suiteId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "type": {
+      "enum": [
+        "benchmark",
+        "regression"
+      ]
+    },
+    "manifestChecksum": {
+      "type": "string",
+      "minLength": 1
+    },
+    "publishedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "version",
+          "bundleChecksum"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "bundleChecksum": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/evaluator-result.schema.json",
+  "title": "Frontend Agent Evaluator Result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "evaluatorResultId",
+    "evaluatorId",
+    "evaluatorVersion",
+    "attemptId",
+    "stage",
+    "deterministic",
+    "status",
+    "evaluatedSnapshotDigest",
+    "outcome",
+    "producerRef",
+    "evidenceRefs"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "evaluatorResultId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluatorId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluatorVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "deterministic": {
+      "type": "boolean"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "error"
+      ]
+    },
+    "evaluatedSnapshotDigest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "passed",
+        "privateCode"
+      ],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "privateCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "producerRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

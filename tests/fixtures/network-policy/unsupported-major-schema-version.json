@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "networkPolicyId": "synthetic-network-policy-001",
+  "version": 1,
+  "phase": "agent",
+  "defaultAction": "deny",
+  "allowedDestinations": [
+    {
+      "destinationId": "synthetic-package-proxy",
+      "kind": "package_proxy"
+    }
+  ],
+  "violationCode": "NETWORK_POLICY_VIOLATION",
+  "unexpected": true
+}

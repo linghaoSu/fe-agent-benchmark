@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "requesterExportResultId": "synthetic-requester-result-001",
+  "exportId": "synthetic-export-001",
+  "runId": "synthetic-run-001",
+  "task": {
+    "id": "synthetic-task-001",
+    "version": 1
+  },
+  "valid": true,
+  "solved": true,
+  "scores": {
+    "build": 1,
+    "functional": 1,
+    "visual": 1,
+    "responsive": 1,
+    "accessibility": 1,
+    "engineering": 1
+  },
+  "efficiency": {
+    "inputTokens": 10,
+    "outputTokens": 5,
+    "toolCalls": 1,
+    "wallTimeSeconds": 1,
+    "costUsd": 0
+  }
+}

@@ -8,8 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -p packages/contracts/tsconfig.json && tsc -p apps/cli/tsconfig.json",
-    "eval": "pnpm --silent build && node apps/cli/dist/index.js",
+    "build": "pnpm generate:types && tsc -p packages/contracts/tsconfig.json && tsc -p packages/state-store-sqlite/tsconfig.json && tsc -p packages/artifact-store-fs/tsconfig.json && tsc -p packages/adapter-protocol/tsconfig.json && tsc -p packages/adapter-mock/tsconfig.json && tsc -p packages/export-policy/tsconfig.json && tsc -p packages/tool-router/tsconfig.json && tsc -p packages/sandbox-docker/tsconfig.json && tsc -p packages/run-coordinator/tsconfig.json && tsc -p apps/cli/tsconfig.json",
+    "generate:types": "node scripts/generate-schema-types.mjs",
+    "check:generated": "node scripts/generate-schema-types.mjs --check",
+    "eval": "node scripts/eval.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 2,
+  "id": "synthetic-task-001",
+  "version": 1,
+  "title": "Synthetic task",
+  "environment": {
+    "image": "synthetic-image@sha256:0000",
+    "repositoryCommit": "0000000",
+    "packageManager": "pnpm@10",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "network": "default-deny"
+  },
+  "budget": {
+    "maxWallTimeSeconds": 60,
+    "maxAgentSteps": 10,
+    "maxCostUsd": 1
+  },
+  "permissions": {
+    "writablePaths": [
+      "src/**"
+    ],
+    "forbiddenPaths": [
+      ".hidden/**"
+    ],
+    "allowDependencyChanges": false
+  },
+  "commands": {
+    "install": "pnpm install --frozen-lockfile",
+    "typecheck": "pnpm typecheck",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "build": "pnpm build",
+    "start": "pnpm start"
+  },
+  "evaluation": {
+    "requiredGates": {
+      "integrity": true,
+      "build": true,
+      "criticalFunctionalTests": true
+    },
+    "weights": {
+      "functional": 1,
+      "visual": 0,
+      "responsive": 0,
+      "accessibility": 0,
+      "engineering": 0
+    }
+  },
+  "unexpected": true
+}

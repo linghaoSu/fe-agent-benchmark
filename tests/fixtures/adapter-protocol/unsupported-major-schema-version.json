@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "protocolVersion": 1,
+  "runId": "synthetic-run-001",
+  "attemptId": "synthetic-attempt-001",
+  "seq": 0,
+  "type": "hello",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "payload": {
+    "adapter": {
+      "id": "synthetic-adapter",
+      "version": "1.0.0"
+    },
+    "capabilities": [
+      "tool-calls"
+    ]
+  },
+  "unexpected": true
+}

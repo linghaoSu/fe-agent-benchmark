@@ -1,0 +1,14 @@
+{
+  "name": "@frontend-agent-benchmark/adapter-mock",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "frontend-agent-adapter-mock": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@frontend-agent-benchmark/adapter-protocol": "workspace:*"
+  }
+}

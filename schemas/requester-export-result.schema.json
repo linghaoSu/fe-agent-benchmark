@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/requester-export-result.schema.json",
+  "title": "Frontend Agent Requester Export Result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "requesterExportResultId",
+    "exportId",
+    "runId",
+    "task",
+    "valid",
+    "solved",
+    "publicOutcomeCode",
+    "scores",
+    "efficiency"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requesterExportResultId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exportId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "solved": {
+      "type": "boolean"
+    },
+    "publicOutcomeCode": {
+      "enum": [
+        "SOLVED",
+        "UNSOLVED",
+        "INVALID",
+        "NOT_EVALUATED"
+      ]
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "build",
+        "functional",
+        "visual",
+        "responsive",
+        "accessibility",
+        "engineering"
+      ],
+      "properties": {
+        "build": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "functional": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "visual": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "responsive": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "accessibility": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "engineering": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "efficiency": {
+      "type": "object",
+      "required": [
+        "inputTokens",
+        "outputTokens",
+        "toolCalls",
+        "wallTimeSeconds",
+        "costUsd"
+      ],
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toolCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toolOutputBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wallTimeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "costUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

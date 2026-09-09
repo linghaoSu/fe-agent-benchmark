@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/data-scan-coverage-policy.schema.json",
+  "title": "Frontend Agent Data Scan Coverage Policy",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "dataScanCoveragePolicyId",
+    "version",
+    "requiredSurfaces",
+    "limits",
+    "worker",
+    "unsupportedOutcome"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "dataScanCoveragePolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requiredSurfaces": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "structured",
+          "text",
+          "archive_members",
+          "image_metadata",
+          "image_readable_text",
+          "type_specific_binary_handler"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "maxArchiveDepth",
+        "maxExpandedBytes",
+        "maxEntries",
+        "maxFileBytes"
+      ],
+      "properties": {
+        "maxArchiveDepth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxExpandedBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxFileBytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "worker": {
+      "type": "object",
+      "required": [
+        "network",
+        "readOnlyInput",
+        "writableHostMount"
+      ],
+      "properties": {
+        "network": {
+          "const": "denied"
+        },
+        "readOnlyInput": {
+          "const": true
+        },
+        "writableHostMount": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "unsupportedOutcome": {
+      "const": "fail_closed"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

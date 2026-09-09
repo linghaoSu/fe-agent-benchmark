@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/run.schema.json",
+  "title": "Frontend Agent Evaluation Run",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "inputHash",
+    "task",
+    "environment",
+    "agent",
+    "seedSet",
+    "budgets",
+    "adapterProtocol",
+    "dependencyLockHash",
+    "dependencyCacheSnapshotId",
+    "networkPolicyVersion",
+    "exportPolicyVersion",
+    "dataScanCoveragePolicyVersion",
+    "status",
+    "requestedK",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "bundleChecksum"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bundleChecksum": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "suite": {
+      "type": "object",
+      "required": [
+        "suiteId",
+        "version"
+      ],
+      "properties": {
+        "suiteId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "imageDigest",
+        "repositoryCommit",
+        "locale",
+        "timezone"
+      ],
+      "properties": {
+        "imageDigest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositoryCommit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "provider",
+        "name",
+        "version"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sampling": {
+          "type": "object",
+          "properties": {
+            "temperature": {
+              "type": "number",
+              "minimum": 0
+            },
+            "topP": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "prompt": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "harness": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "seedSet": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "budgets": {
+      "type": "object",
+      "required": [
+        "maxWallTimeSeconds",
+        "maxAgentSteps",
+        "maxCostUsd"
+      ],
+      "properties": {
+        "maxWallTimeSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxAgentSteps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxCostUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "adapterProtocol": {
+      "type": "object",
+      "required": [
+        "maxFrameBytes",
+        "heartbeatTimeoutSeconds"
+      ],
+      "properties": {
+        "maxFrameBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "heartbeatTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencyLockHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependencyCacheSnapshotId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "networkPolicyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "exportPolicyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "dataScanCoveragePolicyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "created",
+        "preflight",
+        "attempt_active",
+        "aggregating",
+        "completed",
+        "failed"
+      ]
+    },
+    "requestedK": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "finishedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,1 @@
+{"toolRequests":[{"toolCallId":"budget-call-1","tool":"echo","arguments":{"message":"one"}},{"toolCallId":"budget-call-2","tool":"echo","arguments":{"message":"two"}}]}

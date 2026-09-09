@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "evaluatorResultId": "synthetic-evaluator-result-001",
+  "evaluatorId": "synthetic-build",
+  "evaluatorVersion": "1.0.0",
+  "attemptId": "synthetic-attempt-001",
+  "stage": "build",
+  "deterministic": true,
+  "status": "passed",
+  "evaluatedSnapshotDigest": "sha256:4444",
+  "outcome": {
+    "passed": true,
+    "privateCode": "BUILD_PASSED"
+  },
+  "producerRef": "synthetic-producer-001",
+  "evidenceRefs": [
+    "synthetic-artifact-001"
+  ],
+  "unexpected": true
+}

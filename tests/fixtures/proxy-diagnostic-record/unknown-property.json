@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "proxyDiagnosticId": "synthetic-proxy-diagnostic-001",
+  "attemptId": "synthetic-attempt-001",
+  "dependencyCacheSnapshotId": "synthetic-cache-001",
+  "proxyConfigurationHash": "sha256:7777",
+  "observedAt": "2026-01-01T00:00:00Z",
+  "observationWindow": {
+    "startedAt": "2026-01-01T00:00:00Z",
+    "endedAt": "2026-01-01T00:00:05Z"
+  },
+  "requestCorrelationHash": "sha256:9999",
+  "trustedObservation": "Proxy service responded to the synthetic health check",
+  "outcome": "available",
+  "unexpected": true
+}

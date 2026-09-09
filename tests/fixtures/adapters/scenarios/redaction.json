@@ -1,0 +1,1 @@
+{"stderrPreset":"fake_credential","reportCredentialEvent":true,"toolRequests":[{"toolCallId":"redact-1","tool":"run_command","arguments":{"command":"emit_fake_credential"}}]}

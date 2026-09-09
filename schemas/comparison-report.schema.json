@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/comparison-report.schema.json",
+  "title": "Frontend Agent Comparison Report",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "comparisonReportId",
+    "createdAt",
+    "configurations",
+    "comparisons"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "comparisonReportId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configurations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "configurationId",
+          "runIds"
+        ],
+        "properties": {
+          "configurationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "configurationId",
+          "requestedK",
+          "successAtK",
+          "anyAtK",
+          "allAtK",
+          "rawInfrastructureRate",
+          "finalInfrastructureRate",
+          "meanCostUsd",
+          "meanWallTimeSeconds",
+          "meanScores"
+        ],
+        "properties": {
+          "configurationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requestedK": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "successAtK": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "anyAtK": {
+            "type": "boolean"
+          },
+          "allAtK": {
+            "type": "boolean"
+          },
+          "rawInfrastructureRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "finalInfrastructureRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "meanCostUsd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "meanWallTimeSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "meanScores": {
+            "type": "object",
+            "required": [
+              "build",
+              "functional",
+              "visual",
+              "responsive",
+              "accessibility",
+              "engineering"
+            ],
+            "properties": {
+              "build": { "type": "number", "minimum": 0, "maximum": 1 },
+              "functional": { "type": "number", "minimum": 0, "maximum": 1 },
+              "visual": { "type": "number", "minimum": 0, "maximum": 1 },
+              "responsive": { "type": "number", "minimum": 0, "maximum": 1 },
+              "accessibility": { "type": "number", "minimum": 0, "maximum": 1 },
+              "engineering": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

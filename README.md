@@ -42,3 +42,17 @@
 - 每个任务必须可复现、可版本化、可重复运行。
 - Benchmark 与 Regression Suite 分开管理。
 - 评测结果保留分项向量，不只保留单一总分。
+
+## Run 命令
+
+```bash
+pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]
+pnpm eval run execute <run-id> --agent mock [--sandbox fake|docker] [--db <path>]
+pnpm eval run show <run-id> [--db <path>]
+pnpm eval run show --repair <run-id> [--db <path>]
+```
+
+`--repair` 从 SQLite 中的 canonical resolved input 原样重建缺失或损坏的
+`input.json`。默认数据库为 `runs/eval.sqlite`。
+Sandbox 默认为 `fake`；Docker Run 必须在 create 与 execute 时都选择
+`--sandbox docker`，以保持记录的 Run input 不可变。

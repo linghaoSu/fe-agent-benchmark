@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "runId": "synthetic-run-001",
+  "inputHash": "sha256:0000",
+  "task": {
+    "id": "synthetic-task-001",
+    "version": 1,
+    "bundleChecksum": "sha256:1111"
+  },
+  "environment": {
+    "imageDigest": "sha256:2222",
+    "repositoryCommit": "0000000",
+    "locale": "en-US",
+    "timezone": "UTC"
+  },
+  "agent": {
+    "id": "synthetic-agent",
+    "version": "1.0.0"
+  },
+  "seedSet": [
+    7
+  ],
+  "budgets": {
+    "maxWallTimeSeconds": 60,
+    "maxAgentSteps": 10,
+    "maxCostUsd": 1
+  },
+  "adapterProtocol": {
+    "maxFrameBytes": 1048576,
+    "heartbeatTimeoutSeconds": 30
+  },
+  "dependencyLockHash": "sha256:3333",
+  "dependencyCacheSnapshotId": "synthetic-cache-001",
+  "networkPolicyVersion": 1,
+  "exportPolicyVersion": 1,
+  "dataScanCoveragePolicyVersion": 1,
+  "status": "created",
+  "requestedK": 1,
+  "createdAt": "2026-01-01T00:00:00Z"
+}

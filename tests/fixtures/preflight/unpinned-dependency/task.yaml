@@ -1,0 +1,39 @@
+schemaVersion: 1
+id: preflight-synthetic
+version: 1
+title: Synthetic unpinned dependency fixture
+environment:
+  image: synthetic-image
+  repositoryCommit: synthetic-commit
+  packageManager: pnpm
+  locale: en-US
+  timezone: UTC
+  network: controlled-proxy
+budget:
+  maxWallTimeSeconds: 1
+  maxAgentSteps: 1
+  maxCostUsd: 0
+permissions:
+  writablePaths: []
+  forbiddenPaths: []
+  allowDependencyChanges: false
+commands:
+  install: pnpm install --frozen-lockfile
+  typecheck: pnpm typecheck
+  lint: pnpm lint
+  test: pnpm test
+  build: pnpm build
+  start: pnpm start
+evaluation:
+  requiredGates:
+    integrity: true
+    build: true
+    criticalFunctionalTests: true
+  weights:
+    functional: 1
+    visual: 0
+    responsive: 0
+    accessibility: 0
+    engineering: 0
+extensions:
+  dependencyCacheSnapshot: dependency-cache-snapshot.json

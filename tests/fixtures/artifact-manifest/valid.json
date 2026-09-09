@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "artifactManifestId": "synthetic-manifest-001",
+  "attemptId": "synthetic-attempt-001",
+  "status": "finalized",
+  "entries": [
+    {
+      "artifactId": "synthetic-artifact-001",
+      "logicalType": "build-log",
+      "producerRef": "synthetic-producer-001",
+      "mimeType": "text/plain",
+      "sizeBytes": 12,
+      "sha256": "sha256:5555",
+      "path": "logs/build.txt",
+      "status": "finalized",
+      "audience": "maintainer_only",
+      "redactionStatus": "passed",
+      "dataScanStatus": "passed",
+      "scanMetadata": {
+        "scannedChecksum": "sha256:5555",
+        "scannerVersion": "1.0.0",
+        "scannerWorkerDigest": "sha256:6666",
+        "coveragePolicyVersion": 1,
+        "coverageOutcome": "complete"
+      }
+    }
+  ]
+}

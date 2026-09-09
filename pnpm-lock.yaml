@@ -17,9 +17,51 @@ importers:
 
   apps/cli:
     dependencies:
+      '@frontend-agent-benchmark/adapter-protocol':
+        specifier: workspace:*
+        version: link:../../packages/adapter-protocol
+      '@frontend-agent-benchmark/artifact-store-fs':
+        specifier: workspace:*
+        version: link:../../packages/artifact-store-fs
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@frontend-agent-benchmark/export-policy':
+        specifier: workspace:*
+        version: link:../../packages/export-policy
+      '@frontend-agent-benchmark/run-coordinator':
+        specifier: workspace:*
+        version: link:../../packages/run-coordinator
+      '@frontend-agent-benchmark/sandbox-docker':
+        specifier: workspace:*
+        version: link:../../packages/sandbox-docker
+      '@frontend-agent-benchmark/state-store-sqlite':
+        specifier: workspace:*
+        version: link:../../packages/state-store-sqlite
+      '@frontend-agent-benchmark/tool-router':
+        specifier: workspace:*
+        version: link:../../packages/tool-router
+
+  packages/adapter-mock:
+    dependencies:
+      '@frontend-agent-benchmark/adapter-protocol':
+        specifier: workspace:*
+        version: link:../adapter-protocol
+
+  packages/adapter-protocol:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
+  packages/artifact-store-fs:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/state-store-sqlite':
+        specifier: workspace:*
+        version: link:../state-store-sqlite
 
   packages/contracts:
     dependencies:
@@ -29,6 +71,50 @@ importers:
       yaml:
         specifier: 2.8.1
         version: 2.8.1
+
+  packages/export-policy:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/state-store-sqlite':
+        specifier: workspace:*
+        version: link:../state-store-sqlite
+
+  packages/run-coordinator:
+    dependencies:
+      '@frontend-agent-benchmark/adapter-protocol':
+        specifier: workspace:*
+        version: link:../adapter-protocol
+      '@frontend-agent-benchmark/artifact-store-fs':
+        specifier: workspace:*
+        version: link:../artifact-store-fs
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/state-store-sqlite':
+        specifier: workspace:*
+        version: link:../state-store-sqlite
+      '@frontend-agent-benchmark/tool-router':
+        specifier: workspace:*
+        version: link:../tool-router
+
+  packages/sandbox-docker:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/tool-router':
+        specifier: workspace:*
+        version: link:../tool-router
+
+  packages/state-store-sqlite: {}
+
+  packages/tool-router:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 

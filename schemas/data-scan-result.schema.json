@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/data-scan-result.schema.json",
+  "title": "Frontend Agent Data Scan Result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "dataScanResultId",
+    "target",
+    "scannerVersion",
+    "scannerWorkerDigest",
+    "coveragePolicyVersion",
+    "coverageOutcome",
+    "coveredSurfaces",
+    "resourceLimits",
+    "workerOutcome",
+    "outcome",
+    "scannedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "dataScanResultId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "kind",
+        "targetId",
+        "checksum"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "bundle",
+            "artifact",
+            "result"
+          ]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checksum": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "scannerVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scannerWorkerDigest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "coveragePolicyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "coverageOutcome": {
+      "enum": [
+        "complete",
+        "partial",
+        "unsupported",
+        "encrypted",
+        "corrupt",
+        "limit_exceeded"
+      ]
+    },
+    "coveredSurfaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "resourceLimits": {
+      "type": "object",
+      "required": [
+        "cpuSeconds",
+        "memoryBytes",
+        "wallTimeSeconds",
+        "maxOutputBytes"
+      ],
+      "properties": {
+        "cpuSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memoryBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wallTimeSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxOutputBytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "workerOutcome": {
+      "enum": [
+        "succeeded",
+        "crashed",
+        "timeout",
+        "oom",
+        "handler_fault"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "passed",
+        "failed",
+        "quarantined"
+      ]
+    },
+    "findingCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scannedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

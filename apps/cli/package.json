@@ -2,7 +2,17 @@
   "name": "@frontend-agent-benchmark/cli",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
-    "@frontend-agent-benchmark/contracts": "workspace:*"
+    "@frontend-agent-benchmark/adapter-protocol": "workspace:*",
+    "@frontend-agent-benchmark/artifact-store-fs": "workspace:*",
+    "@frontend-agent-benchmark/contracts": "workspace:*",
+    "@frontend-agent-benchmark/export-policy": "workspace:*",
+    "@frontend-agent-benchmark/run-coordinator": "workspace:*",
+    "@frontend-agent-benchmark/sandbox-docker": "workspace:*",
+    "@frontend-agent-benchmark/state-store-sqlite": "workspace:*",
+    "@frontend-agent-benchmark/tool-router": "workspace:*"
   }
 }

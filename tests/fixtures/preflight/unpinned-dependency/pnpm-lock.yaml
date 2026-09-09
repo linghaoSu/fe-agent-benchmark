@@ -1,0 +1,11 @@
+lockfileVersion: "9.0"
+importers:
+  .:
+    dependencies:
+      left-pad:
+        specifier: latest
+        version: latest
+packages:
+  left-pad@latest:
+    resolution:
+      integrity: sha512-c3ludGhldGljLWxlZnQtcGFk

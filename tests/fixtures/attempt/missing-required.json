@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "attemptId": "synthetic-attempt-001",
+  "runId": "synthetic-run-001",
+  "seed": 7,
+  "lifecycleStatus": "succeeded",
+  "agentOutcome": "completed",
+  "executionClassification": "completed",
+  "agentNetworkId": "synthetic-agent-network",
+  "evaluationNetworkId": "synthetic-evaluation-network",
+  "submissionSnapshotDigest": "sha256:4444"
+}

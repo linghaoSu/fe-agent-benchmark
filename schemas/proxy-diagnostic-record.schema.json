@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/proxy-diagnostic-record.schema.json",
+  "title": "Frontend Agent Proxy Diagnostic Record",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "proxyDiagnosticId",
+    "attemptId",
+    "dependencyCacheSnapshotId",
+    "proxyConfigurationHash",
+    "observedAt",
+    "observationWindow",
+    "requestCorrelationHash",
+    "trustedObservation",
+    "outcome"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "proxyDiagnosticId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependencyCacheSnapshotId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proxyConfigurationHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observationWindow": {
+      "type": "object",
+      "required": [
+        "startedAt",
+        "endedAt"
+      ],
+      "properties": {
+        "startedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "requestCorrelationHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trustedObservation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "outcome": {
+      "enum": [
+        "available",
+        "unavailable"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

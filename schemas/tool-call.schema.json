@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/tool-call.schema.json",
+  "title": "Frontend Agent Tool Call",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "toolCallId",
+    "runId",
+    "attemptId",
+    "seq",
+    "tool",
+    "arguments",
+    "status",
+    "requestedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "toolCallId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tool": {
+      "type": "string",
+      "minLength": 1
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "status": {
+      "enum": [
+        "requested",
+        "accepted",
+        "completed",
+        "succeeded",
+        "failed",
+        "rejected"
+      ]
+    },
+    "requestedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "completedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "errorCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcomeCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outputBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "artifactRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

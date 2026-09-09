@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "runId": "synthetic-result-run-001",
+  "task": {
+    "id": "synthetic-task-001",
+    "version": 1
+  },
+  "valid": true,
+  "scores": {
+    "build": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    },
+    "functional": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    },
+    "visual": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    },
+    "responsive": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    },
+    "accessibility": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    },
+    "engineering": {
+      "value": 1,
+      "evidenceRefs": [
+        "synthetic-artifact-001"
+      ]
+    }
+  },
+  "efficiency": {
+    "inputTokens": 10,
+    "outputTokens": 5,
+    "toolCalls": 1,
+    "wallTimeSeconds": 1,
+    "costUsd": 0
+  }
+}

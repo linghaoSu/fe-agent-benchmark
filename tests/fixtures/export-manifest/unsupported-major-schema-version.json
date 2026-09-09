@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "exportManifestId": "synthetic-export-manifest-001",
+  "exportId": "synthetic-export-001",
+  "runId": "synthetic-run-001",
+  "audience": "requester",
+  "createdAt": "2026-01-01T00:00:00Z",
+  "entries": [
+    {
+      "artifactId": "synthetic-public-artifact-001",
+      "path": "summary.json",
+      "sha256": "sha256:8888",
+      "mimeType": "application/json",
+      "sizeBytes": 24,
+      "audience": "requester_safe",
+      "redactionStatus": "passed",
+      "dataScanStatus": "passed"
+    }
+  ],
+  "unexpected": true
+}

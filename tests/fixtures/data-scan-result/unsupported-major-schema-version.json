@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "dataScanResultId": "synthetic-scan-001",
+  "target": {
+    "kind": "artifact",
+    "targetId": "synthetic-artifact-001",
+    "checksum": "sha256:5555"
+  },
+  "scannerVersion": "1.0.0",
+  "scannerWorkerDigest": "sha256:6666",
+  "coveragePolicyVersion": 1,
+  "coverageOutcome": "complete",
+  "coveredSurfaces": [
+    "text"
+  ],
+  "resourceLimits": {
+    "cpuSeconds": 1,
+    "memoryBytes": 1048576,
+    "wallTimeSeconds": 2,
+    "maxOutputBytes": 4096
+  },
+  "workerOutcome": "succeeded",
+  "outcome": "passed",
+  "scannedAt": "2026-01-01T00:00:00Z",
+  "unexpected": true
+}

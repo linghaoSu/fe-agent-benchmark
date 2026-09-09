@@ -18,7 +18,16 @@
       "minimum": 1
     },
     "runId": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluatedSnapshotDigest": {
+      "type": "string",
+      "minLength": 1
     },
     "task": {
       "type": "object",
@@ -28,12 +37,51 @@
       ],
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "version": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "provider",
+        "name"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     },
     "valid": {
       "type": "boolean"
@@ -41,18 +89,190 @@
     "solved": {
       "type": "boolean"
     },
+    "evidenceRefs": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "$ref": "#/$defs/evidenceRefs"
+        },
+        "solved": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      },
+      "additionalProperties": false
+    },
     "scores": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "build",
+        "functional",
+        "visual",
+        "responsive",
+        "accessibility",
+        "engineering"
+      ],
+      "properties": {
+        "build": {
+          "$ref": "#/$defs/score"
+        },
+        "functional": {
+          "$ref": "#/$defs/score"
+        },
+        "visual": {
+          "$ref": "#/$defs/score"
+        },
+        "responsive": {
+          "$ref": "#/$defs/score"
+        },
+        "accessibility": {
+          "$ref": "#/$defs/score"
+        },
+        "engineering": {
+          "$ref": "#/$defs/score"
+        },
+        "performance": {
+          "$ref": "#/$defs/score"
+        }
+      },
+      "additionalProperties": false
     },
     "efficiency": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "inputTokens",
+        "outputTokens",
+        "toolCalls",
+        "wallTimeSeconds",
+        "costUsd"
+      ],
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toolCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toolOutputBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wallTimeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "costUsd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
     },
     "failures": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "category",
+          "code",
+          "severity",
+          "evidenceRefs"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidenceRefs": {
+            "$ref": "#/$defs/evidenceRefs"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "artifacts": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "patch",
+        "events",
+        "playwrightTrace",
+        "screenshotsDir",
+        "evaluatorResultsDir",
+        "manifest"
+      ],
+      "properties": {
+        "patch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "events": {
+          "type": "string",
+          "minLength": 1
+        },
+        "playwrightTrace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "screenshotsDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evaluatorResultsDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "$defs": {
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "score": {
+      "type": "object",
+      "required": [
+        "value",
+        "evidenceRefs"
+      ],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidenceRefs": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
 }

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "comparisonReportId": "synthetic-comparison-001",
+  "createdAt": "2026-01-01T00:00:00Z",
+  "configurations": [
+    {
+      "configurationId": "synthetic-config-a",
+      "runIds": [
+        "synthetic-run-001"
+      ]
+    },
+    {
+      "configurationId": "synthetic-config-b",
+      "runIds": [
+        "synthetic-run-002"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "synthetic-config-a",
+      "requestedK": 1,
+      "successAtK": 1,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1,
+      "meanScores": { "build": 1, "functional": 1, "visual": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+    },
+    {
+      "configurationId": "synthetic-config-b",
+      "requestedK": 1,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1,
+      "meanScores": { "build": 0, "functional": 0, "visual": 0, "responsive": 0, "accessibility": 0, "engineering": 0 }
+    }
+  ],
+  "unexpected": true
+}
