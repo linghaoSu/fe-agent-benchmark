@@ -309,3 +309,27 @@
   full run is still required before declaring V3.2 network half complete.
 - Not yet implemented in this slice: fixture tarball package proxy install and
   the stopped-proxy `DEPENDENCY_PROXY_UNAVAILABLE` preflight/retry path.
+
+## 2026-09-09 — V3.2 controlled package proxy red → green
+
+- Red: `tests/gate/v3-proxy.test.mjs` initially found no fixture mount or fixed
+  registry environment on the Agent container.
+- Green: the fake-Docker gate now proves fixture mount, proxy start/probe before
+  Agent start, fixed npm registry environment, teardown order, schema-valid
+  trusted diagnostic, finalized maintainer-only Artifact, and the two-Attempt
+  `DEPENDENCY_PROXY_UNAVAILABLE` retry path visible through `run show`.
+- The real-Docker `npm ci` fixture gate is present but skipped as
+  `DOCKER_UNAVAILABLE`: this managed shell cannot access OrbStack's Docker
+  socket. The existing V3 network gate skips for the same reason.
+- Follow-up verification (2026-09-09, Claude, Docker reachable): the
+  fixture tarball `tests/fixtures/package-proxy/tarballs/*.tgz` had not been
+  packed — generated with `npm pack`. Real-Docker `npm ci` gate then failed
+  twice: (1) proxy health probe required `r.ok` on `/` which the static server
+  404s, and ran before the server was listening — probe now accepts any HTTP
+  response and polls up to 10s; (2) npm could not create `/home/node/.npm` on
+  the read-only rootfs — `registryEnvironment` now pins `npm_config_cache` and
+  `HOME` to the `/tmp` tmpfs and disables audit/fund/update-notifier.
+- Final verification on a loaded host (load avg ~100):
+  `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 87 passed /
+  0 failed / 0 skipped, including GATE-V3.1-Docker, GATE-V3.2-Docker (network
+  and npm ci) ; `pnpm -r build` and `pnpm check:generated` exit 0.

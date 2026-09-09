@@ -443,3 +443,28 @@
   the OS-enforcement evidence complete.
 - V3.2 owns per-Attempt network/proxy enforcement; V3.3 owns crash-orphan
   census, immutable snapshot digest, and no-follow host collection.
+
+## 2026-09-09 — V3.2 controlled package proxy
+
+### Scope and decisions
+
+- Added only the fixture-directory mount and fixed npm registry environment to
+  the existing per-Attempt proxy service. The service remains a pinned Node
+  image with a small static HTTP command; no registry dependency was added.
+- Added the required Task `fixtureDirectory` field and regenerated the existing
+  contract type. Proxy unavailability now records a schema-validated,
+  maintainer-only diagnostic Artifact and infrastructure producer record before
+  the existing single retry.
+- Allowed Artifact finalization for a failed Attempt so pre-Agent diagnostics
+  remain durable. V3.3, browsers, evaluation networking, and real registry
+  access remain out of scope.
+
+### Verification
+
+- Test-first red: `v3-proxy.test.mjs` failed because the proxy was neither
+  mounted nor injected into the Agent environment.
+- Focused green: 4 passed / 0 failed / 1 skipped; the skip is the real Docker
+  `npm ci` gate and is explicitly `DOCKER_UNAVAILABLE` in this managed shell.
+- `pnpm install`, `pnpm -r build`, and `pnpm check:generated` passed. The
+  serialized full gate suite began cleanly but did not reach its TAP summary
+  before this managed host's 30-second command window; run it on a quieter host.

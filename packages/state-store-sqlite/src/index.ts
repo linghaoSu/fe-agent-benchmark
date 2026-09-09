@@ -1434,10 +1434,10 @@ class SqliteArtifactRepository implements ArtifactRepository {
       const attempt = this.database.prepare(
         "SELECT lifecycle_status FROM attempts WHERE attempt_id = ?",
       ).get(input.attemptId) as { lifecycle_status: AttemptLifecycleStatus } | undefined;
-      if (attempt?.lifecycle_status !== "FINALIZING") {
+      if (attempt?.lifecycle_status !== "FINALIZING" && attempt?.lifecycle_status !== "FAILED") {
         throw new StateStoreError(
           "ARTIFACT_ATTEMPT_STATE_MISMATCH",
-          `Attempt ${input.attemptId} is not finalizing`,
+          `Attempt ${input.attemptId} is not finalizing or failed`,
         );
       }
       const insert = this.database.prepare(`

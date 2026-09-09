@@ -28,6 +28,7 @@ export const DEFAULT_PINNED_NODE_IMAGE = "node:22-alpine@sha256:16e22a550f386320
 
 const PINNED_IMAGE = /@sha256:[a-f0-9]{64}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const PROXY_PROBE_TIMEOUT_MS = 10_000;
 const DEFAULT_RESOURCES: SandboxResources = {
   memoryBytes: 512 * 1024 * 1024,
   cpus: 1,
@@ -67,6 +68,7 @@ export interface DockerContainerSpec {
   workdir: string;
   networkMode: string;
   networkAliases?: string[];
+  environment?: Record<string, string>;
   dns?: string[];
   extraHosts?: string[];
   readOnlyRootfs: true;
@@ -90,6 +92,13 @@ export interface DockerExecResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+}
+
+interface ServiceConfig {
+  image: string;
+  command: string[];
+  port: number;
+  fixtureDirectory?: string;
 }
 
 export interface DockerClient {
@@ -165,6 +174,7 @@ export class DockerCliClient implements DockerClient {
     ];
     for (const tmpfs of spec.tmpfs) arguments_.push("--tmpfs", tmpfs);
     for (const alias of spec.networkAliases ?? []) arguments_.push("--network-alias", alias);
+    for (const [name, value] of Object.entries(spec.environment ?? {})) arguments_.push("--env", `${name}=${value}`);
     for (const dns of spec.dns ?? []) arguments_.push("--dns", dns);
     for (const host of spec.extraHosts ?? []) arguments_.push("--add-host", host);
     for (const mount of spec.mounts) {
@@ -320,6 +330,31 @@ function workspacePath(value: unknown): string {
   return `/workspace/${normalized}`;
 }
 
+function fixtureDirectory(bundlePath: string, directory: string): string {
+  const source = resolve(bundlePath, directory);
+  if (source !== bundlePath && !source.startsWith(`${bundlePath}/`)) {
+    throw new SandboxDockerError(DEPENDENCY_PROXY_UNAVAILABLE, "Package proxy fixture directory escapes the task bundle");
+  }
+  if (!existsSync(source) || !lstatSync(source).isDirectory()) {
+    throw new SandboxDockerError(DEPENDENCY_PROXY_UNAVAILABLE, "Package proxy fixture directory is unavailable");
+  }
+  return source;
+}
+
+function registryEnvironment(port: number): Record<string, string> {
+  const registry = `http://package-proxy:${port}/`;
+  // The rootfs is read-only, so npm's cache/logs must live on the /tmp tmpfs.
+  return {
+    npm_config_registry: registry,
+    NPM_CONFIG_REGISTRY: registry,
+    npm_config_cache: "/tmp/.npm",
+    npm_config_update_notifier: "false",
+    npm_config_audit: "false",
+    npm_config_fund: "false",
+    HOME: "/tmp",
+  };
+}
+
 export class DockerSandboxRuntime implements WorkspaceRunner {
   private readonly client: DockerClient;
   private readonly imageReference: string;
@@ -339,7 +374,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     writablePaths: string[];
     forbiddenPaths?: string[];
     buildOutputPaths?: string[];
-    services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
+    services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
     resources?: Partial<SandboxResources>;
     commandTimeoutMs?: number;
   }) {
@@ -360,7 +395,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     ) throw new TypeError("Sandbox resource limits must be positive");
   }
 
-  private readonly services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
+  private readonly services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
 
   async start(context: SandboxAttemptContext): Promise<void> {
     if (!PINNED_IMAGE.test(this.imageReference)) {
@@ -425,15 +460,20 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
             name: `${containerNameForAttempt(context.attemptId)}-${alias}`,
             image: service.image, user: "1000:1000", workdir: "/tmp", networkMode: state.networkId,
             networkAliases: [alias], readOnlyRootfs: true, noNewPrivileges: true, resources: this.resources,
-            mounts: [], tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777"], command: service.command,
+            mounts: service.fixtureDirectory ? [{
+              source: fixtureDirectory(this.bundlePath, service.fixtureDirectory), target: "/fixtures", readOnly: true,
+            }] : [],
+            tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777"], command: service.command,
           });
           state.serviceContainerIds.push(id);
           await this.client.startContainer(id);
           state.serviceHosts.push(`${alias}:${await this.client.containerNetworkIp(id, state.networkId)}`);
           if (alias === "package-proxy") {
+            // Any HTTP response proves the proxy is listening; the root path may legitimately 404.
+            // Poll briefly because the server process needs a moment after container start.
             const health = await this.client.execContainer(id, {
               user: "1000:1000", workdir: "/tmp",
-              command: ["node", "-e", `fetch('http://127.0.0.1:${service.port}').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))`],
+              command: ["node", "-e", `(async()=>{const d=Date.now()+${PROXY_PROBE_TIMEOUT_MS};for(;;){try{await fetch('http://127.0.0.1:${service.port}/');process.exit(0)}catch{if(Date.now()>d)process.exit(1);await new Promise(r=>setTimeout(r,200))}}})()`],
             });
             if (health.exitCode !== 0) {
               throw new SandboxDockerError(DEPENDENCY_PROXY_UNAVAILABLE, "Controlled package proxy is unavailable");
@@ -448,6 +488,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         workdir: "/workspace",
         networkMode: state.networkId ?? "none",
         ...(state.networkId ? { dns: ["127.0.0.1"], extraHosts: state.serviceHosts } : {}),
+        ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
         resources: this.resources,

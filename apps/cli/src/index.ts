@@ -362,7 +362,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
         imageReference: string;
         resources: { memoryBytes: number; cpus: number; pidsLimit: number };
       };
-      services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number } };
+      services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory: string } };
     };
     const protocol = resolved.adapterProtocol;
     if (parsed.options["--agent"] === "mock" && !protocol) {

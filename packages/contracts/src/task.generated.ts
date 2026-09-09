@@ -27,6 +27,7 @@ export type FrontendAgentEvaluationTask = {
       "image": string;
       "command": Array<string>;
       "port": number;
+      "fixtureDirectory": string;
     };
   };
   "viewports"?: Array<{

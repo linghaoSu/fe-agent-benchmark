@@ -406,6 +406,27 @@ function producer(
   };
 }
 
+export function proxyDiagnosticRecord(input: {
+  attemptId: string;
+  dependencyCacheSnapshotId: string;
+  proxyConfigurationHash: string;
+  observedAt?: string;
+}) {
+  const observedAt = input.observedAt ?? new Date().toISOString();
+  return {
+    schemaVersion: 1,
+    proxyDiagnosticId: `proxy-diagnostic:${input.attemptId}`,
+    attemptId: input.attemptId,
+    dependencyCacheSnapshotId: input.dependencyCacheSnapshotId,
+    proxyConfigurationHash: input.proxyConfigurationHash,
+    observedAt,
+    observationWindow: { startedAt: observedAt, endedAt: observedAt },
+    requestCorrelationHash: `sha256:${createHash("sha256").update(input.attemptId).digest("hex")}`,
+    trustedObservation: "Coordinator probe could not reach the controlled package proxy before agent start",
+    outcome: "unavailable",
+  };
+}
+
 function agentConclusion(outcome: AgentPhaseOutcome): AttemptConclusion {
   if (outcome.agentOutcome === "completed") {
     return {
@@ -632,7 +653,30 @@ export class RunExecutor {
         }
       }
       const code = failureCode(finalError, "SANDBOX_START_FAILED");
-      return this.transitionAttempt(
+      const resolved = JSON.parse(this.store.runs.find(attempt.runId)!.resolvedInputJson) as {
+        dependencyCacheSnapshotId?: string;
+        proxyConfigurationHash?: string;
+      };
+      const diagnostic = code === "DEPENDENCY_PROXY_UNAVAILABLE"
+        && resolved.dependencyCacheSnapshotId && resolved.proxyConfigurationHash
+        ? proxyDiagnosticRecord({
+            attemptId: attempt.attemptId,
+            dependencyCacheSnapshotId: resolved.dependencyCacheSnapshotId,
+            proxyConfigurationHash: resolved.proxyConfigurationHash,
+          })
+        : undefined;
+      if (diagnostic) {
+        if (!validateContractDocument(diagnostic, "proxy-diagnostic-record").valid) {
+          throw new RunCoordinatorError("PROXY_DIAGNOSTIC_INVALID", "Proxy diagnostic record is invalid");
+        }
+        this.artifacts.stage({
+          runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal,
+          logicalType: "proxy_diagnostic", mime: "application/json", relativePath: "proxy-diagnostic.json",
+          audience: "maintainer_only", producerRef: `attempt:${attempt.attemptId}:dependency-proxy`,
+          content: JSON.stringify(diagnostic),
+        });
+      }
+      const failed = await this.transitionAttempt(
         attempt.attemptId,
         "FAILED",
         code,
@@ -648,9 +692,11 @@ export class RunExecutor {
           "sandbox_starting",
           code,
           summary(finalError, "Sandbox failed to start"),
-          [`attempt:${attempt.attemptId}:sandbox-starting`],
+          diagnostic ? ["proxy-diagnostic.json"] : [`attempt:${attempt.attemptId}:sandbox-starting`],
         ),
       );
+      if (diagnostic) this.artifacts.finalize(attempt.runId, attempt.attemptId, attempt.ordinal);
+      return failed;
     }
 
     await this.transitionAttempt(attempt.attemptId, "AGENT_RUNNING", "Agent phase began");
