@@ -35,6 +35,8 @@ export interface CalibrationReport {
   schemaVersion: 1;
   taskId: string;
   taskVersion: number;
+  /** Binds the report to the exact bundle it evaluated; publication refuses a stale report. */
+  bundleChecksum?: string;
   createdAt: string;
   entries: CalibrationEntry[];
   mutationCaptureRate: number;
@@ -87,7 +89,7 @@ export function calibrate(observation: ReferenceObservation, expectation: Refere
 }
 
 /** FR-014 / SC-003: every correct reference must be solved and every declared Mutation must be captured (100%). */
-export function buildCalibrationReport(task: { id: string; version: number }, entries: CalibrationEntry[], createdAt: string): CalibrationReport {
+export function buildCalibrationReport(task: { id: string; version: number; bundleChecksum?: string }, entries: CalibrationEntry[], createdAt: string): CalibrationReport {
   const mutations = entries.filter((entry) => entry.kind === "mutation");
   const captured = mutations.filter((entry) => entry.passed).length;
   const kinds = new Set(entries.map((entry) => entry.kind));
@@ -98,6 +100,7 @@ export function buildCalibrationReport(task: { id: string; version: number }, en
     schemaVersion: 1,
     taskId: task.id,
     taskVersion: task.version,
+    ...(task.bundleChecksum ? { bundleChecksum: task.bundleChecksum } : {}),
     createdAt,
     entries,
     mutationCaptureRate: mutations.length ? captured / mutations.length : 0,

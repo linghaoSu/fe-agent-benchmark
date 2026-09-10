@@ -1,0 +1,8 @@
+{
+  "description": "Debounce delay set to 0 while the stale-response guard stays intact: every keystroke fires a request, so five fast keystrokes produce five API calls. Trips only the critical debounce-limits-requests test; the stale-response guard still keeps the final result correct.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

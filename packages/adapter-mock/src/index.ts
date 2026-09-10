@@ -1,5 +1,5 @@
 import { createInterface } from "node:readline";
-import { lstatSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import {
@@ -31,12 +31,21 @@ function goldScenario(mutate: (path: string, content: string) => string = (_path
   });
   // A reference may ship any writable top-level tree (src/, tests/); everything under it is written verbatim.
   const trees = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).map((entry) => entry.name);
+  // A reference may list starter files it removes (one relative path per line) in `.deleted`.
+  const deletedManifest = join(root, ".deleted");
+  const deletions = existsSync(deletedManifest)
+    ? readFileSync(deletedManifest, "utf8").split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#"))
+    : [];
+  for (const path of deletions) if (!/^[A-Za-z0-9_./-]+$/.test(path) || path.includes("..")) throw new Error(`Unsafe deletion path ${path}`);
   return {
-    toolRequests: trees.flatMap((tree) => files(join(root, tree)).map((file) => ({ tree, file }))).map(({ tree, file }, index) => ({
-      toolCallId: `reference-${index}`,
-      tool: "write_file",
-      arguments: { path: join(tree, relative(join(root, tree), file)), content: mutate(relative(join(root, "src"), file), readFileSync(file, "utf8")) },
-    })),
+    toolRequests: [
+      ...deletions.map((path, index) => ({ toolCallId: `reference-delete-${index}`, tool: "run_command", arguments: { command: `rm -f ${path}` } })),
+      ...trees.flatMap((tree) => files(join(root, tree)).map((file) => ({ tree, file }))).map(({ tree, file }, index) => ({
+        toolCallId: `reference-${index}`,
+        tool: "write_file",
+        arguments: { path: join(tree, relative(join(root, tree), file)), content: mutate(relative(join(root, "src"), file), readFileSync(file, "utf8")) },
+      })),
+    ],
     patch: "",
   };
 }

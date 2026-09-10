@@ -82,7 +82,7 @@ const usage = [
   "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker]",
   "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--db <path>]",
   "pnpm eval compare --config <id>=<runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]",
-  "pnpm eval suite publish --id <suiteId> --version <n> --type benchmark|regression --task <task-dir> [--task ...] --out <suite.json>",
+  "pnpm eval suite publish --id <suiteId> --version <n> --type benchmark|regression --task <task-dir> [--task ...] --calibration <reports-dir> --out <suite.json>",
   "pnpm eval suite calibrate --suite <suite.json> --tasks-root <dir> [--out matrix.json] [--sandbox docker]",
 ].join(" | ");
 const documentKindDetection = [
@@ -294,7 +294,8 @@ async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<
       const run = runScenario(bundle, `reference:${reference}`, sandbox, "1", root);
       return calibrate({ reference, runId: run.runId, result: run.result, privateCodes: run.privateCodes }, expectation);
     });
-    const report = buildCalibrationReport({ id: metadata.taskId, version: metadata.version }, entries, new Date().toISOString());
+    const checksum = checksumTaskBundle(bundle);
+    const report = buildCalibrationReport({ id: metadata.taskId, version: metadata.version, bundleChecksum: "bundleChecksum" in checksum ? checksum.bundleChecksum : undefined }, entries, new Date().toISOString());
     const out = parsed.options["--out"] as string | undefined;
     if (out) writeFileSync(resolve(process.cwd(), out), `${JSON.stringify(report, null, 2)}\n`);
     console.log(JSON.stringify(report));
@@ -400,6 +401,7 @@ function compareRuns(arguments_: string[]): boolean {
       const configurationId = spec.slice(0, separator);
       const runIds = spec.slice(separator + 1).split(",").map((value) => value.trim()).filter(Boolean);
       if (!runIds.length) throw new Error(`--config ${configurationId} lists no Runs`);
+      if (new Set(runIds).size !== runIds.length) throw new Error(`--config ${configurationId} repeats a Run id; each sample must be an independent Run`);
       const runs: RunSample[] = runIds.map((runId) => {
         const run = store.runs.find(runId);
         if (!run) throw new Error(`Run ${runId} not found`);
@@ -414,8 +416,18 @@ function compareRuns(arguments_: string[]): boolean {
           attempts: attempts.length,
         };
       });
+      // Samples in one configuration must be comparable: same Task version and environment, distinct seeds.
+      const inputs = runIds.map((runId) => { const run = store.runs.find(runId)!; const resolved = JSON.parse(run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string }; return { runId, taskId: run.taskId, taskVersion: run.taskVersion, imageDigest: resolved.sandbox?.imageDigest, snapshot: resolved.dependencyCacheSnapshotId, seed: run.seedSet[0] }; });
+      const fingerprints = new Set(inputs.map((i) => `${i.taskId}@${i.taskVersion}|${i.imageDigest ?? ""}|${i.snapshot ?? ""}`));
+      if (fingerprints.size !== 1) throw new Error(`--config ${configurationId} mixes Runs of different tasks or environments: ${[...fingerprints].join(" vs ")}`);
+      if (new Set(inputs.map((i) => i.seed)).size !== inputs.length) throw new Error(`--config ${configurationId} repeats a seed; repeated seeds are not independent samples`);
       return { configurationId, runs };
     });
+    if (new Set(configurations.map((c) => c.configurationId)).size !== configurations.length) throw new Error("configuration ids must be unique");
+    const allRuns = configurations.flatMap((c) => c.runs.map((r) => r.runId));
+    if (new Set(allRuns).size !== allRuns.length) throw new Error("a Run may belong to only one configuration");
+    const taskKeys = new Set(configurations.map((c) => { const run = store.runs.find(c.runs[0]!.runId)!; return `${run.taskId}@${run.taskVersion}`; }));
+    if (taskKeys.size !== 1) throw new Error(`configurations compare different tasks: ${[...taskKeys].join(", ")}`);
     const report = buildComparisonReport({ comparisonReportId: randomUUID(), createdAt: new Date().toISOString(), configurations, k });
     const validation = validateContractDocument(report, "comparison-report");
     if (!validation.valid) throw new Error(`Comparison report is invalid: ${JSON.stringify(validation.errors).slice(0, 400)}`);
@@ -440,12 +452,13 @@ function publishSuite(arguments_: string[]): boolean {
     const value = arguments_[index + 1];
     if (!argument.startsWith("--") || typeof value !== "string") return false;
     if (argument === "--task") tasks.push(value);
-    else if (["--id", "--version", "--type", "--out"].includes(argument)) options[argument] = value;
+    else if (["--id", "--version", "--type", "--out", "--calibration"].includes(argument)) options[argument] = value;
     else return false;
     index += 1;
   }
   const version = Number(options["--version"]);
-  if (!tasks.length || !options["--id"] || !options["--out"] || !Number.isInteger(version) || version < 1 || !["benchmark", "regression"].includes(options["--type"] ?? "")) return false;
+  if (!tasks.length || !options["--id"] || !options["--out"] || !options["--calibration"] || !Number.isInteger(version) || version < 1 || !["benchmark", "regression"].includes(options["--type"] ?? "")) return false;
+  const calibrationRoot = resolve(process.cwd(), options["--calibration"]);
 
   const denied: string[] = [];
   const entries = tasks.map((taskPath) => {
@@ -460,6 +473,33 @@ function publishSuite(arguments_: string[]): boolean {
     for (const required of ["gold", "alternative"]) if (!existsSync(join(references, required, "expected.json"))) denied.push(`${taskPath}: references/${required}/expected.json missing`);
     if (!hasMutation) denied.push(`${taskPath}: no mutation with expected.json`);
     if (!metadata.hiddenBundle || !existsSync(join(bundle, metadata.hiddenBundle))) denied.push(`${taskPath}: hidden bundle missing`);
+    // Every expectation must parse; a malformed one would silently weaken calibration.
+    for (const name of ["gold", "alternative", ...(existsSync(join(references, "mutations")) ? readdirSync(join(references, "mutations"), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => `mutations/${e.name}`) : [])]) {
+      const expectedPath = join(references, name, "expected.json");
+      if (!existsSync(expectedPath)) continue;
+      try { parseReferenceExpectation(JSON.parse(readFileSync(expectedPath, "utf8")), name); } catch (error) { denied.push(`${taskPath}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    // FR-014: publication requires a passing calibration report for exactly this bundle checksum.
+    const reportPath = join(calibrationRoot, `${metadata.taskId}.json`);
+    if (!existsSync(reportPath)) denied.push(`${taskPath}: no calibration report at ${reportPath}`);
+    else {
+      const report = JSON.parse(readFileSync(reportPath, "utf8")) as { passed?: boolean; bundleChecksum?: string; mutationCaptureRate?: number; taskId?: string };
+      if (report.taskId !== metadata.taskId) denied.push(`${taskPath}: calibration report is for ${report.taskId}`);
+      if (report.bundleChecksum !== checksum.bundleChecksum) denied.push(`${taskPath}: calibration report checksum ${report.bundleChecksum ?? "absent"} does not match bundle ${checksum.bundleChecksum}`);
+      if (report.passed !== true || report.mutationCaptureRate !== 1) denied.push(`${taskPath}: calibration did not pass with 100% mutation capture`);
+    }
+    // Hidden-to-public leak gate: no agent-visible file may contain a distinctive line of the hidden spec.
+    const hiddenSpec = metadata.hiddenBundle ? join(bundle, metadata.hiddenBundle, "functional.spec.mjs") : undefined;
+    if (hiddenSpec && existsSync(hiddenSpec)) {
+      const signatures = readFileSync(hiddenSpec, "utf8").split("\n").map((line) => line.trim()).filter((line) => line.length >= 40 && !/^(import|export|\/\/|\*|\})/.test(line));
+      const publicRoots = ["src", "tests", "README.md", "index.html", "server.mjs", "scripts"].map((name) => join(bundle, name)).filter(existsSync);
+      const publicFiles = (path: string): string[] => lstatSync(path).isDirectory() ? readdirSync(path).flatMap((name) => publicFiles(join(path, name))) : [path];
+      for (const file of publicRoots.flatMap(publicFiles)) {
+        const text = readFileSync(file, "utf8");
+        const leaked = signatures.find((line) => text.includes(line));
+        if (leaked) denied.push(`${taskPath}: hidden assertion text appears in public file ${file.slice(bundle.length + 1)}`);
+      }
+    }
     // Data hygiene (SC-013): no credential-looking text anywhere in the bundle, public or hidden.
     const scan = (directory: string): void => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -498,17 +538,20 @@ function publishSuite(arguments_: string[]): boolean {
   const validation = validateContractDocument(suite, "suite");
   if (!validation.valid) throw new Error(`Suite is invalid: ${JSON.stringify(validation.errors).slice(0, 400)}`);
   const out = resolve(process.cwd(), options["--out"]);
-  if (existsSync(out)) {
-    const existing = JSON.parse(readFileSync(out, "utf8")) as { manifestChecksum?: string; version?: number };
-    // Published Suites are immutable: the same version may only be rewritten with an identical manifest.
-    if (existing.version === version && existing.manifestChecksum !== manifestChecksum) {
-      console.log(JSON.stringify({ code: "SUITE_PUBLICATION_DENIED", denied: [`suite ${options["--id"]} v${version} already published with a different manifest checksum`] }));
-      process.exitCode = 1;
-      return true;
-    }
+  // Immutability is tracked in a ledger next to the output, keyed by suite id + version, independent of --out.
+  const ledgerPath = join(dirname(out), `${options["--id"]}.published.json`);
+  const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) as Record<string, { manifestChecksum: string; publishedAt: string }> : {};
+  const previous = ledger[String(version)];
+  if (previous && previous.manifestChecksum !== manifestChecksum) {
+    console.log(JSON.stringify({ code: "SUITE_PUBLICATION_DENIED", denied: [`suite ${options["--id"]} v${version} already published with manifest ${previous.manifestChecksum}`] }));
+    process.exitCode = 1;
+    return true;
   }
-  writeFileSync(out, `${JSON.stringify(suite, null, 2)}\n`);
-  console.log(JSON.stringify(suite));
+  const published = { ...suite, publishedAt: previous?.publishedAt ?? suite.publishedAt };
+  ledger[String(version)] = { manifestChecksum, publishedAt: published.publishedAt };
+  atomicWrite(out, `${JSON.stringify(published, null, 2)}\n`);
+  atomicWrite(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+  console.log(JSON.stringify(published));
   return true;
 }
 

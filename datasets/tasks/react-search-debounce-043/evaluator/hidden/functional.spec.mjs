@@ -3,6 +3,17 @@ const rowsText = async (page) => (await rows(page).allTextContents()).join("\n")
 const settle = (page, ms) => page.waitForFunction(([start, wait]) => Date.now() - start > wait, [Date.now(), ms]);
 
 export default [
+  { id: "debounce-limits-requests", critical: true, async run(page) {
+    // Five fast keystrokes within the 150 ms window must coalesce into at most two API calls.
+    await page.evaluate(() => { globalThis.__searchUsersCalls = 0; });
+    const input = page.locator("[data-testid=search-input]");
+    await input.fill("");
+    for (const chunk of ["a", "an", "ann", "anna", "annab"]) { await input.fill(chunk); await page.waitForTimeout(20); }
+    await page.waitForFunction(() => !document.querySelector("[data-testid=loading-state]"), null, { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const calls = await page.evaluate(() => globalThis.__searchUsersCalls || 0);
+    return calls >= 1 && calls <= 2;
+  } },
   { id: "stale-response-ignored", critical: true, async run(page) {
     // "an" resolves slowly (700ms), "ann" quickly (100ms). Wait until the "an" request is in flight, then type "ann".
     await page.fill("[data-testid=search-input]", "an");

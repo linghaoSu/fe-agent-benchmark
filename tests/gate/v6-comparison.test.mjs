@@ -34,8 +34,13 @@ test("GATE-V6.1-001: success@k, any/all, infrastructure rates and means over ind
   ] };
   const summary = summarizeConfiguration(config);
   assert.equal(summary.requestedK, 4); assert.equal(summary.successAtK, 2); assert.equal(summary.anyAtK, true); assert.equal(summary.allAtK, false);
-  assert.equal(summary.rawInfrastructureRate, 0.5); // attempts: 1+1+2+2 = 6; infra attempts: 0+0+1+2 = 3
+  assert.equal(summary.rawInfrastructureRate, 0.5); // Runs whose first Attempt hit infrastructure: r3 (retried) and r4 → 2/4
   assert.equal(summary.finalInfrastructureRate, 0.25);
+  // A FAILED Run carrying a Result is never a success; an undersized window can never be all@k.
+  const failedWithResult = summarizeConfiguration({ configurationId: "x", runs: [run("f", 1, { status: "FAILED", finalClassification: "evaluator_error" })] });
+  assert.equal(failedWithResult.successAtK, 0);
+  const undersized = summarizeConfiguration({ configurationId: "y", runs: [run("u", 1)] }, 5);
+  assert.deepEqual([undersized.requestedK, undersized.successAtK, undersized.allAtK], [5, 1, false]);
   assert.equal(summary.meanScores.functional, 0.8); assert.equal(summary.meanCostUsd, 0.833333); assert.equal(summary.meanWallTimeSeconds, 16.666667);
   const k2 = summarizeConfiguration(config, 2);
   assert.equal(k2.requestedK, 2); assert.equal(k2.successAtK, 1); assert.equal(k2.rawInfrastructureRate, 0);

@@ -3,6 +3,15 @@ const items = (page) => page.locator("[data-testid=note-item]");
 const addNote = async (page, note) => { await page.fill("[data-testid=note-input]", note); await page.click("[data-testid=add-note]"); };
 
 export default [
+  // The refactor is the requirement: the singleton store must be gone and the hook must exist and be what app.js uses.
+  { id: "store-replaced-by-hook", critical: true, async run(page) {
+    const status = async (path) => page.evaluate(async (p) => (await fetch(p, { cache: "no-store" })).status, path);
+    if (await status("/src/store.js") !== 404) return false;
+    if (await status("/src/hooks/useDashboard.js") !== 200) return false;
+    const app = await page.evaluate(async () => (await fetch("/src/app.js", { cache: "no-store" })).text());
+    const hook = await page.evaluate(async () => (await fetch("/src/hooks/useDashboard.js", { cache: "no-store" })).text());
+    return /useDashboard/.test(app) && !/store\.js/.test(app) && /useReducer/.test(hook);
+  } },
   { id: "increment-then-reset", critical: true, async run(page) {
     for (let i = 0; i < 3; i += 1) await page.click("[data-testid=increment]");
     await page.waitForFunction(() => document.querySelector("[data-testid=count]")?.textContent.trim() === "3");

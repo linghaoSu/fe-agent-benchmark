@@ -483,9 +483,9 @@ const CREDENTIAL_PATTERNS = [
   },
   {
     kind: "credential",
-    // A secret value is either quoted, or a bare token that contains a digit; `errors.password =
-    // MESSAGES.password` (a code identifier) has neither and is not a credential.
-    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*(?:["'][A-Za-z0-9_./+=-]{12,}["']|(?=[A-Za-z0-9_./+=-]*\d)[A-Za-z0-9_./+=-]{12,})/gi,
+    // Any 12+ char value counts, except a bare dotted member reference such as `MESSAGES.password`
+    // or `values.password` — code that names a field, not a secret.
+    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*(?!["']?[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$.]*\s*(?:\(|[;,)]|$)|\s*\())["']?[A-Za-z0-9_./+=-]{12,}/gi,
   },
 ];
 

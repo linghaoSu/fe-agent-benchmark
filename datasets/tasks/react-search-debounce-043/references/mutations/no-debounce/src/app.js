@@ -18,6 +18,7 @@ function App() {
       const id = tracker.next();
       setLoading(true);
       searchUsers(query).then((rows) => {
+        if (!tracker.isCurrent(id)) return;
         setResult({ query, rows });
         setLoading(false);
       });

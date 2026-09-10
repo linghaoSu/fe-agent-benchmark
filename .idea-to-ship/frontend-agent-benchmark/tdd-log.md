@@ -679,3 +679,32 @@
   accepts a quoted value OR a bare 12+ char value containing a digit, which
   keeps redaction and still ignores code identifiers. Full suite 175 gates,
   174 first-pass + this fix rerun green.
+
+## 2026-09-10 (night) — V6 adversarial review triage (in progress)
+
+- Codex review `review-mtvl5lmv-19r36n` on 23fd855: 9 findings, all accepted
+  (real, in scope, small). Applied so far, pending Docker verification:
+  (1) credential heuristic excludes only dotted member references and calls
+  (`MESSAGES.password`, `validatePassword(...)`) — bare alphabetic secrets are
+  flagged again; (2) `suite publish` requires `--calibration <dir>` holding a
+  passing report whose `bundleChecksum` matches each task, parses every
+  expected.json, and (3) rejects any public file containing a distinctive
+  line of the hidden spec; (4) version immutability lives in a
+  `<suiteId>.published.json` ledger independent of `--out`, writes are atomic,
+  `publishedAt` is stable on identical republish; (5) `compare` rejects
+  duplicate Run ids, repeated seeds, mixed task/environment fingerprints,
+  duplicate configuration ids and Runs shared across configurations;
+  (6) success requires `status === COMPLETED`, `allAtK` requires a full window
+  of k; (7) task 109 gained a critical structural hidden test (`/src/store.js`
+  must 404, `useDashboard.js` must exist and use `useReducer`) and references
+  declare `src/store.js` in a `.deleted` manifest that the mock adapter
+  applies via `run_command rm`; (8) task 043's fixed API counts calls on
+  `globalThis.__searchUsersCalls`, a critical `debounce-limits-requests` test
+  requires ≤ 2 calls for 5 fast keystrokes, and the two-defect mutation was
+  replaced by single-defect `no-debounce`; (9) raw infrastructure rate is
+  first-Attempt infrastructure failures per Run.
+- 50-Run reliability baseline: 45/50 gold Runs completed (all 9 other tasks
+  5/5) before the OrbStack Docker daemon stopped answering
+  (`spawnSync docker ETIMEDOUT` → correctly classified DOCKER_UNAVAILABLE); the
+  daemon is still hung, so the baseline, recalibration of 043/109, suite v4
+  republish and the full gate run are pending a Docker restart.

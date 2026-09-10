@@ -36,18 +36,19 @@ function round(value: number): number { return Number(value.toFixed(6)); }
 export function summarizeConfiguration(configuration: ConfigurationSamples, k = configuration.runs.length): FrontendAgentComparisonReport["comparisons"][number] {
   if (!Number.isInteger(k) || k < 1) throw new RangeError("k must be a positive integer");
   const window = configuration.runs.slice(0, k);
-  const solved = window.filter((run) => run.result?.solved === true).length;
-  const withResult = window.filter((run): run is RunSample & { result: FrontendAgentEvaluationResult } => Boolean(run.result));
-  const totalAttempts = window.reduce((total, run) => total + run.attempts, 0);
-  // Every Attempt before the final one was an infrastructure retry; the final one counts only if it also failed that way.
-  const infrastructureAttempts = window.reduce((total, run) => total + Math.max(0, run.attempts - 1) + (run.finalClassification === "infrastructure_error" ? 1 : 0), 0);
+  // Only a COMPLETED Run with a Result is a quality sample; a FAILED Run never counts as solved.
+  const solved = window.filter((run) => run.status === "COMPLETED" && run.result?.solved === true).length;
+  const withResult = window.filter((run): run is RunSample & { result: FrontendAgentEvaluationResult } => run.status === "COMPLETED" && Boolean(run.result));
+  // Raw rate: Runs whose FIRST Attempt hit an infrastructure error (retried or not), per Run — the before-retry view.
+  const firstAttemptInfrastructure = window.filter((run) => run.attempts > 1 || run.finalClassification === "infrastructure_error").length;
   return {
     configurationId: configuration.configurationId,
     requestedK: k,
     successAtK: solved,
     anyAtK: solved > 0,
-    allAtK: window.length > 0 && solved === window.length,
-    rawInfrastructureRate: round(totalAttempts ? infrastructureAttempts / totalAttempts : 0),
+    // all@k is only meaningful over a full window of k Runs.
+    allAtK: window.length === k && solved === k,
+    rawInfrastructureRate: round(window.length ? firstAttemptInfrastructure / window.length : 0),
     finalInfrastructureRate: round(window.length ? window.filter((run) => run.finalClassification === "infrastructure_error").length / window.length : 0),
     meanCostUsd: round(mean(withResult.map((run) => run.result.efficiency.costUsd))),
     meanWallTimeSeconds: round(mean(withResult.map((run) => run.result.efficiency.wallTimeSeconds))),

@@ -19,6 +19,8 @@ function abortError() {
 }
 
 export function searchUsers(query, { signal } = {}) {
+  // Call counter read by the hidden tests to verify request frequency (debounce). Not part of the public contract.
+  globalThis.__searchUsersCalls = (globalThis.__searchUsersCalls || 0) + 1;
   return new Promise((resolve, reject) => {
     if (signal && signal.aborted) { reject(abortError()); return; }
     const onAbort = () => { clearTimeout(timer); reject(abortError()); };

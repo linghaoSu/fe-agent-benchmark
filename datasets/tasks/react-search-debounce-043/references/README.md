@@ -44,7 +44,7 @@ Each mutation is gold with exactly one defect in `src/app.js`. Hidden tests:
 | mutation | defect | hidden tests failing | expected |
 | --- | --- | --- | --- |
 | `remove-stale-guard` | `if (!tracker.isCurrent(id)) return;` deleted; debounce intact | `stale-response-ignored` (critical): the "an" response (700ms) overwrites the 2 "ann" rows with 7 during the 900ms settle | `solved: false`, `FUNCTIONAL_CRITICAL_FAILED` |
-| `no-debounce-no-guard` | debounce delay 0 AND stale guard deleted | `stale-response-ignored` (critical), same overwrite; results flicker per keystroke | `solved: false`, `FUNCTIONAL_CRITICAL_FAILED` |
+| `no-debounce` | debounce delay set to 0, stale guard intact | `debounce-limits-requests` (critical) only — five fast keystrokes produce five API calls |
 | `wrong-filter-field` | API rows are re-filtered on `role` instead of name/email, so any name query yields 0 rows | `stale-response-ignored`, `clear-input-restores-all`, `search-narrows-by-name-or-email` (all critical) and `loading-state-while-pending` | `solved: false`, `FUNCTIONAL_CRITICAL_FAILED` |
 | `remove-empty-state` | the `empty-state` branch is removed; an empty table renders instead | `empty-state-after-no-match` (non-critical) only | `solved: true`, `scoreBelow.functional < 1` |
 | `remove-aria` | `aria-label` stripped from the input, leaving only a placeholder | `search-input-accessible-name` (non-critical); a11y `form-labels` flags the placeholder-only input | `solved: true`, `dimensions.accessibility: failed`, `scoreBelow.accessibility < 1` |
