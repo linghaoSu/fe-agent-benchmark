@@ -609,3 +609,21 @@
 - Final after review fixes: 168 gates, 165 green on the first pass; the three
   failures were the V2.2 heartbeat cluster under load (avg 47) and passed 9/9
   on an isolated rerun. Calibration and repeat Docker gates green.
+
+## 2026-09-10 — V6.1 seed batches, success@k and comparison report red → green
+
+- `packages/comparison`: `summarizeConfiguration` (success@k / any@k / all@k
+  over the first k Runs — k counts Runs, never Attempts; raw vs final
+  infrastructure rate; mean cost/wall/scores), `stabilityOf` (agreement of
+  discrete conclusions), `buildComparisonReport` emitting the existing
+  comparison-report schema with stability and seeds in `extensions`.
+- CLI: `pnpm eval batch <task> --seeds 1,2,3 [--scenario] [--configuration]`
+  creates one independent Run per seed in the same database; `pnpm eval
+  compare --config <id>=<runIds> … [--k] [--out]` builds and validates the
+  report from stored Runs.
+- Red: `compare` dispatch required no positional, but the CLI parser treats
+  the first argument as `inputPath`, so `--config` fell into usage. Fixed by
+  passing it through.
+- Green: unit gates V6.1-001/002; real Docker: batch 2×gold + 2×noop then
+  compare → gold success@2 = 2 (all@k), noop 0 (any@k false), functional
+  means 1 vs < 1, gold stability agreement 1.

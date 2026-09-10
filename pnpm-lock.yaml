@@ -26,6 +26,9 @@ importers:
       '@frontend-agent-benchmark/calibration':
         specifier: workspace:*
         version: link:../../packages/calibration
+      '@frontend-agent-benchmark/comparison':
+        specifier: workspace:*
+        version: link:../../packages/comparison
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -67,6 +70,12 @@ importers:
         version: link:../state-store-sqlite
 
   packages/calibration:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
+  packages/comparison:
     dependencies:
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*

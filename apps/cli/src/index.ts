@@ -17,12 +17,14 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { buildCalibrationReport, calibrate, compareRepeats, type ReferenceExpectation } from "@frontend-agent-benchmark/calibration";
+import { buildComparisonReport, type ConfigurationSamples, type RunSample } from "@frontend-agent-benchmark/comparison";
 import { tmpdir } from "node:os";
 
 import {
   checksumTaskBundle,
   preflightTaskBundle,
   readPreflightedTaskBundle,
+  validateContractDocument,
   validateContractFile,
   type FrontendAgentEvaluationResult,
 } from "@frontend-agent-benchmark/contracts";
@@ -77,6 +79,8 @@ const usage = [
   "pnpm eval baseline <task-dir> [--scenario react-orders-gold] [--sandbox docker]",
   "pnpm eval calibrate <task-dir> [--sandbox docker] [--out <report.json>]",
   "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker]",
+  "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--db <path>]",
+  "pnpm eval compare --config <id>=<runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]",
 ].join(" | ");
 const documentKindDetection = [
   "validate selects kinds by the first top-level marker in this order:",
@@ -331,6 +335,91 @@ function parseReferenceExpectation(value: unknown, reference: string): Reference
   if (record.codes !== undefined && (!Array.isArray(record.codes) || record.codes.some((c) => typeof c !== "string"))) fail("expect.codes must be strings");
   if (Object.keys(record).length === 0) fail("expect declares nothing");
   return { ...(typeof document.description === "string" ? { description: document.description } : {}), expect: record as ReferenceExpectation["expect"] };
+}
+
+/**
+ * FR-012: run one Task with one Agent configuration once per seed, each as an independent Run in the same
+ * database, and print the Run ids grouped under a configuration id for `eval compare`.
+ */
+async function batchTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
+  const parsed = parseArguments(arguments_);
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--seeds", "--scenario", "--configuration", "--sandbox", "--db"].includes(option))) return false;
+  const seedsOption = parsed.options["--seeds"];
+  if (typeof seedsOption !== "string") return false;
+  const seeds = seedsOption.split(",").map((value) => Number(value.trim()));
+  if (!seeds.length || seeds.some((seed) => !Number.isInteger(seed) || seed < 0) || new Set(seeds).size !== seeds.length) return false;
+  const bundle = resolve(process.cwd(), bundlePath);
+  const scenario = (parsed.options["--scenario"] as string | undefined) ?? "reference:gold";
+  const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
+  const configurationId = (parsed.options["--configuration"] as string | undefined) ?? `mock:${scenario}`;
+  const path = databasePath(parsed.options["--db"]);
+  const cli = (...args: string[]) => {
+    const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
+    return JSON.parse(result.stdout) as Record<string, unknown>;
+  };
+  const runs = seeds.map((seed) => {
+    const created = cli("run", "create", bundle, "--seed", String(seed), "--sandbox", sandbox, "--db", path) as { runId: string };
+    const executed = cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", path) as { status: string };
+    return { seed, runId: created.runId, status: executed.status };
+  });
+  console.log(JSON.stringify({ configurationId, taskBundle: bundle, scenario, runs }));
+  process.exitCode = runs.every((run) => run.status === "COMPLETED") ? 0 : 1;
+  return true;
+}
+
+/**
+ * FR-013: `eval compare --config <id>=<runId,runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]`
+ * builds a schema-valid comparison report over Runs already in the database.
+ */
+function compareRuns(arguments_: string[]): boolean {
+  const configs: string[] = [];
+  const options: Record<string, string> = {};
+  for (let index = 0; index < arguments_.length; index += 1) {
+    const argument = arguments_[index]!;
+    const value = arguments_[index + 1];
+    if (!argument.startsWith("--") || typeof value !== "string") return false;
+    if (argument === "--config") configs.push(value);
+    else if (["--k", "--out", "--db"].includes(argument)) options[argument] = value;
+    else return false;
+    index += 1;
+  }
+  if (!configs.length) return false;
+  const k = options["--k"] === undefined ? undefined : Number(options["--k"]);
+  if (k !== undefined && (!Number.isInteger(k) || k < 1)) return false;
+  const path = databasePath(options["--db"]);
+  const store = openStateStore(path);
+  try {
+    const configurations: ConfigurationSamples[] = configs.map((spec) => {
+      const separator = spec.indexOf("=");
+      if (separator <= 0) throw new Error(`--config expects <id>=<runId,...>, got ${spec}`);
+      const configurationId = spec.slice(0, separator);
+      const runIds = spec.slice(separator + 1).split(",").map((value) => value.trim()).filter(Boolean);
+      if (!runIds.length) throw new Error(`--config ${configurationId} lists no Runs`);
+      const runs: RunSample[] = runIds.map((runId) => {
+        const run = store.runs.find(runId);
+        if (!run) throw new Error(`Run ${runId} not found`);
+        if (run.status !== "COMPLETED" && run.status !== "FAILED") throw new Error(`Run ${runId} is still ${run.status}`);
+        const attempts = store.attempts.list(runId);
+        const final = [...attempts].sort((a, b) => b.ordinal - a.ordinal)[0];
+        const stored = store.results.find(runId);
+        return {
+          runId, seed: run.seedSet[0] ?? 0, status: run.status as RunSample["status"],
+          result: stored ? JSON.parse(stored.resultJson) as FrontendAgentEvaluationResult : undefined,
+          finalClassification: final?.executionClassification ?? "infrastructure_error",
+          attempts: attempts.length,
+        };
+      });
+      return { configurationId, runs };
+    });
+    const report = buildComparisonReport({ comparisonReportId: randomUUID(), createdAt: new Date().toISOString(), configurations, k });
+    const validation = validateContractDocument(report, "comparison-report");
+    if (!validation.valid) throw new Error(`Comparison report is invalid: ${JSON.stringify(validation.errors).slice(0, 400)}`);
+    if (options["--out"]) writeFileSync(resolve(process.cwd(), options["--out"]), `${JSON.stringify(report, null, 2)}\n`);
+    console.log(JSON.stringify(report));
+    return true;
+  } finally { store.close(); }
 }
 
 /** `reference:<name>` selects `<bundle>/references/<name>/src` (e.g. gold, alternative, mutations/drop-search-handler). */
@@ -713,6 +802,10 @@ try {
   } else if (command === "calibrate" && inputPath && await calibrateTask(inputPath, extraArguments)) {
     // Handled above.
   } else if (command === "repeat" && inputPath && await repeatTask(inputPath, extraArguments)) {
+    // Handled above.
+  } else if (command === "batch" && inputPath && await batchTask(inputPath, extraArguments)) {
+    // Handled above.
+  } else if (command === "compare" && compareRuns([...(inputPath ? [inputPath] : []), ...extraArguments])) {
     // Handled above.
   } else {
     printUsage();
