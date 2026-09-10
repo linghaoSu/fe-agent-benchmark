@@ -1,0 +1,12 @@
+{
+  "description": "Total page count computed with Math.floor(23 / 5) = 4 instead of ceil = 5. Critical `indicator-total-pages` fails (\"第 1 / 4 页\"); `direct-load-page-3` and `next-stops-at-last-page` also fail because the indicator/total are wrong and items 21-23 become unreachable.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

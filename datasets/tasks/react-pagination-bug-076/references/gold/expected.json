@@ -1,0 +1,10 @@
+{
+  "description": "Reference fix: pure src/pagination.js (ceil total, clamp, URL parse) used by a useState(initialPage) app; both pager buttons are aria-labelled and disabled at the boundaries. Must be solved with every asserted dimension passing.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

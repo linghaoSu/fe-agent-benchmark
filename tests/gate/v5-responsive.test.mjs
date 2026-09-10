@@ -77,3 +77,12 @@ test("GATE-V5-009: run() rejection is converted to a failed result, not a crash"
   assert.equal(validateContractDocument(result, "evaluator-result").valid, true); assert.equal(result.outcome.privateCode, "RESPONSIVE_MEASUREMENT_FAILED");
   assert.match(ctx.staged.find((s) => s.relativePath === "responsive/playwright.log").content, /container gone/);
 });
+
+test("GATE-V5-RESP-010: an empty visible element (status/live region) is not a zero-size defect", async () => {
+  const { evaluateMeasurements } = await import(responsive);
+  const base = { viewport: "desktop", width: 1280, height: 720, innerWidth: 1280, docScrollWidth: 1280, bodyScrollWidth: 1280 };
+  const empty = evaluateMeasurements({ ...base, elements: [{ testId: "form-status", x: 0, y: 0, width: 360, height: 0, right: 360, visible: true, empty: true }] });
+  assert.equal(empty.checks.find((c) => c.id === "no-zero-size-visible-testids").passed, true);
+  const collapsed = evaluateMeasurements({ ...base, elements: [{ testId: "card", x: 0, y: 0, width: 360, height: 0, right: 360, visible: true, empty: false }] });
+  assert.equal(collapsed.checks.find((c) => c.id === "no-zero-size-visible-testids").passed, false);
+});

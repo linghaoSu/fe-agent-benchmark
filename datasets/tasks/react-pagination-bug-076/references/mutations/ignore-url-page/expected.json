@@ -1,0 +1,12 @@
+{
+  "description": "Initial page state is hard-coded to 1 and the `?page=` query is never read. Critical `direct-load-page-3` fails (page 1 rows rendered); in-page navigation and the indicator still work.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

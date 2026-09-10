@@ -1,0 +1,12 @@
+{
+  "description": "Arrow/Home/End keys move DOM focus to the target tab but never change the selected tab (aria-selected and panel stay on the first tab). Trips critical arrow-right-moves-focus-and-selection and arrow-left-wraps-to-last, plus non-critical end-jumps-to-last. Click still selects.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

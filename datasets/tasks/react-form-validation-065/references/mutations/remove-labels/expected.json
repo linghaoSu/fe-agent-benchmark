@@ -1,0 +1,15 @@
+{
+  "description": "The <label htmlFor> elements are removed, leaving all four inputs without any accessible name (no label, aria-label or placeholder). All critical tests pass; the non-critical inputs-have-labels test fails and the accessibility dimension should fail with its score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

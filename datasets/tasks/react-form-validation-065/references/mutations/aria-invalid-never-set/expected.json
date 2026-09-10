@@ -1,0 +1,12 @@
+{
+  "description": "Invalid inputs are no longer marked aria-invalid=\"true\" (aria-describedby and the error elements are intact). All critical tests pass; only the non-critical short-password-marks-aria-invalid test fails, so the task counts as solved but the functional score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

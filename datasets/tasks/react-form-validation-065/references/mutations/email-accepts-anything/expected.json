@@ -1,0 +1,12 @@
+{
+  "description": "After validation the submit handler deletes the email error whenever the field is non-empty, so 'not-an-email' is accepted and the form submits. Fails the critical invalid-email-rejected test (no error-email element, status shows 提交成功).",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

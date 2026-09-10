@@ -1,0 +1,15 @@
+{
+  "description": "Both pager buttons lose their aria-label; their only content is an aria-hidden glyph span, so they have no accessible name (axe `button-name`). All critical tests pass; the non-critical `pager-buttons-named-and-disabled` test fails and the accessibility dimension must fail with score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

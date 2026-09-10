@@ -1,0 +1,12 @@
+{
+  "description": "The submit handler validates with confirm overwritten by password, so a mismatched confirm is never reported and the form submits successfully. Fails the critical mismatched-confirm-only-error test (no error-confirm element, status shows 提交成功); empty-submit still shows four errors because an empty password also yields an empty confirm.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

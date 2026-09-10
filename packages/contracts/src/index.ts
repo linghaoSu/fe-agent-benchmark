@@ -483,7 +483,8 @@ const CREDENTIAL_PATTERNS = [
   },
   {
     kind: "credential",
-    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/gi,
+    // The value must be a quoted literal; `errors.password = MESSAGES.password` is code, not a secret.
+    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*["'][A-Za-z0-9_./+=-]{12,}["']/gi,
   },
 ];
 

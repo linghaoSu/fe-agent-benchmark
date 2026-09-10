@@ -1,0 +1,12 @@
+{
+  "description": "Prev-page guard is `page >= 1`: on page 1 the button is enabled and a click moves to page 0 (no rows, \"第 0 / 5 页\"). All three critical tests pass; only the non-critical `prev-stays-on-first-page` and `pager-buttons-named-and-disabled` tests fail, so the task counts as solved with functional score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

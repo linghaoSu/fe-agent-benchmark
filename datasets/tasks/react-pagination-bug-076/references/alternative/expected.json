@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different correct fix: useReducer inside src/hooks/usePageState.js (pushState + popstate), Pager/ProductList components, <ul> list markup and text-labelled buttons. Must be solved; layout legitimately differs from gold baselines so visual is not asserted.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

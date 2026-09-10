@@ -3,7 +3,7 @@ import type { FrontendAgentEvaluatorResult } from "@frontend-agent-benchmark/con
 import type { EvaluatorContext, EvaluatorPlugin } from "@frontend-agent-benchmark/evaluator-core";
 
 export type Viewport = { name: string; width: number; height: number };
-export type ElementMeasurement = { testId: string; x: number; y: number; width: number; height: number; right: number; visible: boolean };
+export type ElementMeasurement = { testId: string; x: number; y: number; width: number; height: number; right: number; visible: boolean; empty?: boolean };
 export type ViewportMeasurement = { viewport: string; width: number; height: number; innerWidth: number; docScrollWidth: number; bodyScrollWidth: number; elements: ElementMeasurement[] };
 export type ResponsiveCheck = { id: string; passed: boolean; detail?: string };
 
@@ -16,7 +16,8 @@ export function evaluateMeasurements(measurement: ViewportMeasurement): { checks
   const visible = measurement.elements.filter((e) => e.visible);
   const overflow = measurement.docScrollWidth <= limit && measurement.bodyScrollWidth <= limit;
   const beyond = visible.filter((e) => e.right > limit);
-  const zero = visible.filter((e) => !(e.width > 0 && e.height > 0));
+  // Empty status/live regions are legitimately 0px tall until they receive content; only elements with content count.
+  const zero = visible.filter((e) => !(e.width > 0 && e.height > 0) && !e.empty);
   return { checks: [
     { id: "no-horizontal-overflow", passed: overflow, detail: overflow ? undefined : `docScrollWidth=${measurement.docScrollWidth} bodyScrollWidth=${measurement.bodyScrollWidth} innerWidth=${measurement.innerWidth}` },
     { id: "no-element-beyond-right-edge", passed: beyond.length === 0, detail: beyond.length ? `beyond right edge: ${beyond.map((e) => `${e.testId}(right=${e.right})`).join(", ")}` : undefined },
@@ -35,7 +36,7 @@ function parseMeasurements(stdout: string): ViewportMeasurement[] | null {
       const elements: ElementMeasurement[] = [];
       for (const e of m.elements) {
         if (typeof e?.testId !== "string" || !isNumber(e.x) || !isNumber(e.y) || !isNumber(e.width) || !isNumber(e.height) || !isNumber(e.right) || typeof e.visible !== "boolean") return null;
-        elements.push({ testId: e.testId, x: e.x, y: e.y, width: e.width, height: e.height, right: e.right, visible: e.visible });
+        elements.push({ testId: e.testId, x: e.x, y: e.y, width: e.width, height: e.height, right: e.right, visible: e.visible, empty: e.empty === true });
       }
       out.push({ viewport: m.viewport, width: m.width, height: m.height, innerWidth: m.innerWidth, docScrollWidth: m.docScrollWidth, bodyScrollWidth: m.bodyScrollWidth, elements });
     }
@@ -52,7 +53,7 @@ export class ResponsiveEvaluator implements EvaluatorPlugin {
   async cleanup() {}
   private script(): string {
     const viewports = JSON.stringify(this.input.viewports.map((v) => ({ name: v.name, width: v.width, height: v.height })));
-    return `const viewports=${viewports}; (async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const measurements=[];for(const v of viewports){const c=await b.newContext({viewport:{width:v.width,height:v.height},deviceScaleFactor:1});const measure='__fab_measure_'+Math.random().toString(36).slice(2);await c.addInitScript(({name})=>{const qsa=Document.prototype.querySelectorAll,rect=Element.prototype.getBoundingClientRect,gcs=window.getComputedStyle,getAttr=Element.prototype.getAttribute,sw=Object.getOwnPropertyDescriptor(Element.prototype,'scrollWidth').get,iw=Object.getOwnPropertyDescriptor(window,'innerWidth').get,round=Math.round,from=Array.from;const fn=()=>{const elements=from.call(Array,qsa.call(document,'[data-testid]')).map((e)=>{const b=rect.call(e);const s=gcs.call(window,e);return {testId:getAttr.call(e,'data-testid')||'',x:round(b.x),y:round(b.y),width:round(b.width),height:round(b.height),right:round(b.x+b.width),visible:s.visibility!=='hidden'&&s.display!=='none'}});return {innerWidth:iw.call(window),docScrollWidth:sw.call(document.documentElement),bodyScrollWidth:document.body?sw.call(document.body):0,elements}};Object.defineProperty(window,name,{value:fn,configurable:false,writable:false,enumerable:false})},{name:measure});const p=await c.newPage();p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);await p.goto('http://app:${this.input.port}/',{waitUntil:'networkidle'});const m=await p.evaluate((name)=>window[name](),measure);measurements.push({viewport:v.name,width:v.width,height:v.height,...m});await c.close()}await b.close();process.stdout.write(JSON.stringify({measurements})+'\\n')})().catch((e)=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
+    return `const viewports=${viewports}; (async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const measurements=[];for(const v of viewports){const c=await b.newContext({viewport:{width:v.width,height:v.height},deviceScaleFactor:1});const measure='__fab_measure_'+Math.random().toString(36).slice(2);await c.addInitScript(({name})=>{const qsa=Document.prototype.querySelectorAll,rect=Element.prototype.getBoundingClientRect,gcs=window.getComputedStyle,getAttr=Element.prototype.getAttribute,sw=Object.getOwnPropertyDescriptor(Element.prototype,'scrollWidth').get,iw=Object.getOwnPropertyDescriptor(window,'innerWidth').get,round=Math.round,from=Array.from;const fn=()=>{const elements=from.call(Array,qsa.call(document,'[data-testid]')).map((e)=>{const b=rect.call(e);const s=gcs.call(window,e);return {testId:getAttr.call(e,'data-testid')||'',x:round(b.x),y:round(b.y),width:round(b.width),height:round(b.height),right:round(b.x+b.width),visible:s.visibility!=='hidden'&&s.display!=='none',empty:!e.hasChildNodes()}});return {innerWidth:iw.call(window),docScrollWidth:sw.call(document.documentElement),bodyScrollWidth:document.body?sw.call(document.body):0,elements}};Object.defineProperty(window,name,{value:fn,configurable:false,writable:false,enumerable:false})},{name:measure});const p=await c.newPage();p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);await p.goto('http://app:${this.input.port}/',{waitUntil:'networkidle'});const m=await p.evaluate((name)=>window[name](),measure);measurements.push({viewport:v.name,width:v.width,height:v.height,...m});await c.close()}await b.close();process.stdout.write(JSON.stringify({measurements})+'\\n')})().catch((e)=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
   }
   async execute(context: EvaluatorContext): Promise<FrontendAgentEvaluatorResult> {
     const producerRef = `attempt:${context.attemptId}:evaluator:responsive`;

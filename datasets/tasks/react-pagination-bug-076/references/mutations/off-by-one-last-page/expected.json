@@ -1,0 +1,12 @@
+{
+  "description": "Next-page guard is `page <= total` instead of `page < total`: on the last page the button stays enabled and one more click goes to page 6 with zero rows. Critical `next-stops-at-last-page` fails (also the non-critical disabled-state check).",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

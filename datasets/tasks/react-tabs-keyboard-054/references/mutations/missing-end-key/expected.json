@@ -1,0 +1,12 @@
+{
+  "description": "The keydown handler in app.js ignores the End key, so End leaves focus and selection on the first tab (Home and arrows still work). Only the non-critical end-jumps-to-last test fails; all critical tests pass, so the task counts as solved but functional score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

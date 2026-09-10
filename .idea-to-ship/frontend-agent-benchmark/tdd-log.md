@@ -653,3 +653,12 @@
   each); no fixes were needed. `eval suite publish` v2 now lists 4 tasks;
   `eval suite calibrate` (all-task matrix) added. Gates V6.3-001/002 check
   every dataset bundle is complete, validated, ≥5 mutations, unique checksum.
+- V6.3 (continued): tasks 054 (accessibility: WAI-ARIA tabs), 065 (feature:
+  form validation), 076 (bugfix: pagination) authored by sub agents and
+  calibrated on real Docker. 054 and 076 passed 7/7 first time. 065 exposed
+  two evaluator defects, both fixed with gates: (1) static preflight rejected
+  the gold `validate.js` as a credential because the generic pattern matched
+  `errors.password = MESSAGES.password` — the pattern now requires a quoted
+  literal value; (2) the responsive `no-zero-size-visible-testids` check
+  flagged an empty `form-status` live region (360×0) — empty elements are now
+  legitimately zero-size (V5-RESP-010). 065 then passed 7/7 with 100% capture.

@@ -1,0 +1,12 @@
+{
+  "description": "The tabpanel always renders the first tab's text regardless of the selected tab (selection, aria attributes and focus still update). Trips critical click-selects-and-updates-panel, arrow-right-moves-focus-and-selection and arrow-left-wraps-to-last, plus non-critical end-jumps-to-last.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

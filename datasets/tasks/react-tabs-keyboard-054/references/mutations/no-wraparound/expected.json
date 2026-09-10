@@ -1,0 +1,12 @@
+{
+  "description": "The keydown handler in app.js short-circuits at the edges: ArrowLeft on the first tab and ArrowRight on the last tab keep the current tab instead of wrapping. Trips critical arrow-left-wraps-to-last only; ArrowRight from the first tab, End, click and roles still work.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

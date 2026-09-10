@@ -1,0 +1,15 @@
+{
+  "description": "Strips the ARIA semantics while keeping behaviour: the strip has no role=tablist and no aria-label, the tabs have no role=tab and no aria-controls (aria-selected is kept on plain <button>s, which is an invalid attribute for role=button), and the panel has no role=tabpanel/aria-labelledby. All critical hidden tests pass (click, arrows, focus, wrap-around); non-critical tab-roles-and-single-selection fails. axe wcag2a flags aria-allowed-attr (serious) on the buttons, so the accessibility dimension fails and scores below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

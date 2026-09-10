@@ -1,0 +1,12 @@
+{
+  "description": "The early return on validation errors is removed: errors are still rendered, but the fake submission always runs and form-status shows 提交成功. Fails the critical empty-submit-shows-all-errors, mismatched-confirm-only-error and invalid-email-rejected tests, which all require that 提交成功 never appears alongside errors.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

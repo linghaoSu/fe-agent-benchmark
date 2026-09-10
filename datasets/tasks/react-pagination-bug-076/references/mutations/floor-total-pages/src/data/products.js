@@ -1,0 +1,27 @@
+export const PAGE_SIZE = 5;
+
+export const products = [
+  { id: "P-001", name: "无线鼠标", category: "配件", price: 89 },
+  { id: "P-002", name: "机械键盘", category: "配件", price: 399 },
+  { id: "P-003", name: "27 寸显示器", category: "显示", price: 1599 },
+  { id: "P-004", name: "USB-C 扩展坞", category: "配件", price: 259 },
+  { id: "P-005", name: "降噪耳机", category: "音频", price: 899 },
+  { id: "P-006", name: "蓝牙音箱", category: "音频", price: 329 },
+  { id: "P-007", name: "笔记本支架", category: "配件", price: 129 },
+  { id: "P-008", name: "网络摄像头", category: "视频", price: 349 },
+  { id: "P-009", name: "移动硬盘 2TB", category: "存储", price: 569 },
+  { id: "P-010", name: "固态硬盘 1TB", category: "存储", price: 649 },
+  { id: "P-011", name: "桌面麦克风", category: "音频", price: 459 },
+  { id: "P-012", name: "显示器挂灯", category: "显示", price: 199 },
+  { id: "P-013", name: "电竞椅", category: "家具", price: 1299 },
+  { id: "P-014", name: "升降桌", category: "家具", price: 2199 },
+  { id: "P-015", name: "无线充电板", category: "配件", price: 149 },
+  { id: "P-016", name: "路由器 WiFi 6", category: "网络", price: 499 },
+  { id: "P-017", name: "网线 5 米", category: "网络", price: 25 },
+  { id: "P-018", name: "读卡器", category: "存储", price: 39 },
+  { id: "P-019", name: "手写板", category: "配件", price: 699 },
+  { id: "P-020", name: "便携显示器", category: "显示", price: 1199 },
+  { id: "P-021", name: "电源适配器 65W", category: "配件", price: 159 },
+  { id: "P-022", name: "鼠标垫", category: "配件", price: 49 },
+  { id: "P-023", name: "游戏手柄", category: "配件", price: 399 },
+];
