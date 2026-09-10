@@ -60,6 +60,8 @@ import {
 
 // Evaluation commands (install/test/build) are bounded independently of the Agent wall budget.
 const EVALUATION_COMMAND_TIMEOUT_MS = 5 * 60_000;
+// Upper bound for one recursive `eval run …` child spawned by baseline/calibrate/repeat.
+const CHILD_RUN_TIMEOUT_MS = 20 * 60_000;
 // Host-only vendored playwright-core matching the pinned browser image; mounted read-only into the browser container only.
 const PLAYWRIGHT_RUNTIME_PATH = new URL("../../../tests/fixtures/playwright-runtime", import.meta.url).pathname;
 const AXE_SOURCE_PATH = join(PLAYWRIGHT_RUNTIME_PATH, "axe", "axe.min.js");
@@ -168,7 +170,8 @@ async function writeBaselines(bundlePath: string, arguments_: string[]): Promise
   const databasePath = join(root, "eval.sqlite");
   try {
     const cli = (...args: string[]) => {
-      const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+      const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS });
+      if (result.error) throw result.error;
       if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
       return JSON.parse(result.stdout) as Record<string, unknown>;
     };
@@ -211,23 +214,43 @@ async function writeBaselines(bundlePath: string, arguments_: string[]): Promise
   }
 }
 
-interface ReferenceRun { runId: string; result: FrontendAgentEvaluationResult; privateCodes: string[]; status: string }
+interface ReferenceRun {
+  runId: string; result: FrontendAgentEvaluationResult; privateCodes: string[]; status: string;
+  fingerprint: { inputHash: string; imageDigest?: string; dependencyCacheSnapshotId?: string; networkPolicyId?: string };
+}
 
 /** Runs one Task bundle once through the Docker pipeline with the given mock scenario in a throwaway database. */
 function runScenario(bundle: string, scenario: string, sandbox: string, seed: string, root: string): ReferenceRun {
   const databasePath = join(root, `${randomUUID()}.sqlite`);
   const cli = (...args: string[]) => {
-    const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS });
+    if (result.error) throw result.error;
     if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
     return JSON.parse(result.stdout) as Record<string, unknown>;
   };
   const created = cli("run", "create", bundle, "--seed", seed, "--sandbox", sandbox, "--db", databasePath) as { runId: string };
   cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
   const shown = cli("run", "show", created.runId, "--db", databasePath) as {
-    run: { status: string }; result?: { resultJson: string }; producerRecords: Array<{ privateCode: string }>;
+    run: { status: string; inputHash: string; resolvedInputJson: string }; result?: { resultJson: string }; producerRecords: Array<{ privateCode: string }>;
+    attempts: Array<{ ordinal: number; agentOutcome: string; executionClassification: string }>;
+    toolCalls?: Array<{ outcomeCode: string | null }>;
   };
   if (shown.run.status !== "COMPLETED" || !shown.result) throw new Error(`Run for ${scenario} ended ${shown.run.status}`);
-  return { runId: created.runId, status: shown.run.status, result: JSON.parse(shown.result.resultJson) as FrontendAgentEvaluationResult, privateCodes: shown.producerRecords.map((record) => record.privateCode) };
+  // A calibration sample is only meaningful if the reference was fully applied: the Agent phase completed
+  // normally and no write was rejected. Otherwise the pipeline evaluated the starter (or a partial tree).
+  const finalAttempt = [...shown.attempts].sort((a, b) => b.ordinal - a.ordinal)[0];
+  if (!finalAttempt || finalAttempt.agentOutcome !== "completed" || finalAttempt.executionClassification !== "completed") {
+    throw new Error(`Reference ${scenario} was not fully applied: agent outcome ${finalAttempt?.agentOutcome ?? "absent"} / ${finalAttempt?.executionClassification ?? "absent"}`);
+  }
+  const rejected = (shown.toolCalls ?? []).filter((call) => call.outcomeCode !== "TOOL_SUCCEEDED");
+  if (rejected.length) throw new Error(`Reference ${scenario} had ${rejected.length} rejected tool call(s)`);
+  const resolvedInput = JSON.parse(shown.run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string; networkPolicyId?: string };
+  return {
+    runId: created.runId, status: shown.run.status,
+    result: JSON.parse(shown.result.resultJson) as FrontendAgentEvaluationResult,
+    privateCodes: shown.producerRecords.map((record) => record.privateCode),
+    fingerprint: { inputHash: shown.run.inputHash, imageDigest: resolvedInput.sandbox?.imageDigest, dependencyCacheSnapshotId: resolvedInput.dependencyCacheSnapshotId, networkPolicyId: resolvedInput.networkPolicyId },
+  };
 }
 
 function unlockTree(path: string): void {
@@ -259,9 +282,8 @@ async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<
   try {
     const entries = references.sort().map((reference) => {
       const expectedPath = join(referencesRoot, reference, "expected.json");
-      const expectation = existsSync(expectedPath)
-        ? JSON.parse(readFileSync(expectedPath, "utf8")) as ReferenceExpectation
-        : { expect: { valid: true, solved: true } };
+      if (!existsSync(expectedPath)) throw new Error(`Reference ${reference} has no expected.json`);
+      const expectation = parseReferenceExpectation(JSON.parse(readFileSync(expectedPath, "utf8")), reference);
       const run = runScenario(bundle, `reference:${reference}`, sandbox, "1", root);
       return calibrate({ reference, runId: run.runId, result: run.result, privateCodes: run.privateCodes }, expectation);
     });
@@ -287,11 +309,28 @@ async function repeatTask(bundlePath: string, arguments_: string[]): Promise<boo
   const root = mkdtempSync(join(tmpdir(), "fab-repeat-"));
   try {
     const runs = Array.from({ length: times }, () => runScenario(bundle, scenario, sandbox, seed, root));
-    const comparison = compareRepeats(runs.map((run) => run.result));
+    const comparison = compareRepeats(runs.map((run) => ({ result: run.result, fingerprint: run.fingerprint, codes: run.privateCodes })));
     console.log(JSON.stringify({ scenario, seed, times, runIds: runs.map((run) => run.runId), identical: comparison.identical, differences: comparison.differences, comparedFields: comparison.compared.length }));
     process.exitCode = comparison.identical ? 0 : 1;
     return true;
   } finally { unlockTree(root); rmSync(root, { recursive: true, force: true }); }
+}
+
+function parseReferenceExpectation(value: unknown, reference: string): ReferenceExpectation {
+  const fail = (why: string): never => { throw new Error(`references/${reference}/expected.json: ${why}`); };
+  if (typeof value !== "object" || value === null) return fail("not an object");
+  const document = value as Record<string, unknown>;
+  const expect = document.expect;
+  if (typeof expect !== "object" || expect === null) return fail("missing expect");
+  const record = expect as Record<string, unknown>;
+  const known = ["valid", "solved", "gates", "dimensions", "codes", "scoreBelow", "scoreAtLeast"];
+  for (const key of Object.keys(record)) if (!known.includes(key)) fail(`unknown expect.${key}`);
+  for (const key of ["valid", "solved"]) if (record[key] !== undefined && typeof record[key] !== "boolean") fail(`expect.${key} must be boolean`);
+  for (const key of ["gates", "dimensions"]) if (record[key] !== undefined && (typeof record[key] !== "object" || Object.values(record[key] as object).some((v) => typeof v !== "string"))) fail(`expect.${key} must map to strings`);
+  for (const key of ["scoreBelow", "scoreAtLeast"]) if (record[key] !== undefined && (typeof record[key] !== "object" || Object.values(record[key] as object).some((v) => typeof v !== "number"))) fail(`expect.${key} must map to numbers`);
+  if (record.codes !== undefined && (!Array.isArray(record.codes) || record.codes.some((c) => typeof c !== "string"))) fail("expect.codes must be strings");
+  if (Object.keys(record).length === 0) fail("expect declares nothing");
+  return { ...(typeof document.description === "string" ? { description: document.description } : {}), expect: record as ReferenceExpectation["expect"] };
 }
 
 /** `reference:<name>` selects `<bundle>/references/<name>/src` (e.g. gold, alternative, mutations/drop-search-handler). */

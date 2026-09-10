@@ -29,14 +29,27 @@ export function parsePatch(patch: string): Array<PatchFile & { addedLines: strin
   const files: Array<PatchFile & { addedLines: string[] }> = [];
   let current: (PatchFile & { addedLines: string[] }) | undefined;
   let pendingPath: string | undefined;
+  // `git diff --binary` emits binary and pure-rename records without ---/+++ headers; register them from the
+  // `diff --git a/x b/y` header so they still count toward footprint and generated-output checks.
+  let headerPath: string | undefined; let headerRegistered = false;
+  const registerHeader = (): void => {
+    if (headerPath && !headerRegistered) { current = { path: headerPath, added: 0, removed: 0, kind: classifyPath(headerPath), addedLines: [] }; files.push(current); headerRegistered = true; }
+  };
   for (const line of patch.split(/\r?\n/)) {
-    if (line.startsWith("diff --git ")) { current = undefined; pendingPath = undefined; continue; }
+    if (line.startsWith("diff --git ")) {
+      current = undefined; pendingPath = undefined; headerRegistered = false;
+      const match = /^diff --git (?:"?a\/(.*?)"?) (?:"?b\/(.*?)"?)$/.exec(line);
+      headerPath = match?.[2]?.replace(/\\"/g, '"');
+      continue;
+    }
+    if (line.startsWith("GIT binary patch") || line.startsWith("Binary files ") || line.startsWith("rename to ") || line.startsWith("copy to ")) { registerHeader(); if (current && !current.added) current.added = 1; continue; }
     if (line.startsWith("--- ")) { pendingPath = line.slice(4).replace(/^a\//, "").trim(); continue; }
     if (line.startsWith("+++ ")) {
       const target = line.slice(4).trim();
       const path = target === "/dev/null" ? (pendingPath && pendingPath !== "/dev/null" ? pendingPath : undefined) : target.replace(/^b\//, "");
       if (!path) { current = undefined; continue; }
-      current = { path, added: 0, removed: 0, kind: classifyPath(path), addedLines: [] }; files.push(current); continue;
+      if (headerRegistered && current && current.path === path) continue;
+      current = { path, added: 0, removed: 0, kind: classifyPath(path), addedLines: [] }; files.push(current); headerRegistered = true; continue;
     }
     if (!current) continue;
     if (line.startsWith("+")) { current.added += 1; current.addedLines.push(line.slice(1)); }

@@ -39,6 +39,7 @@ export interface CalibrationReport {
   entries: CalibrationEntry[];
   mutationCaptureRate: number;
   passed: boolean;
+  incomplete?: string[];
 }
 
 function kindOf(reference: string): CalibrationEntry["kind"] {
@@ -89,14 +90,19 @@ export function calibrate(observation: ReferenceObservation, expectation: Refere
 export function buildCalibrationReport(task: { id: string; version: number }, entries: CalibrationEntry[], createdAt: string): CalibrationReport {
   const mutations = entries.filter((entry) => entry.kind === "mutation");
   const captured = mutations.filter((entry) => entry.passed).length;
+  const kinds = new Set(entries.map((entry) => entry.kind));
+  // A calibrated task needs a Gold, a structurally different Alternative and at least one Mutation (FR-014);
+  // a report over fewer kinds cannot pass, and a missing mutation set is 0% capture, not 100%.
+  const complete = kinds.has("gold") && kinds.has("alternative") && mutations.length > 0;
   return {
     schemaVersion: 1,
     taskId: task.id,
     taskVersion: task.version,
     createdAt,
     entries,
-    mutationCaptureRate: mutations.length ? captured / mutations.length : 1,
-    passed: entries.length > 0 && entries.every((entry) => entry.passed),
+    mutationCaptureRate: mutations.length ? captured / mutations.length : 0,
+    passed: complete && entries.every((entry) => entry.passed),
+    ...(complete ? {} : { incomplete: [...(!kinds.has("gold") ? ["gold"] : []), ...(!kinds.has("alternative") ? ["alternative"] : []), ...(mutations.length ? [] : ["mutation"])] }),
   };
 }
 
@@ -107,6 +113,14 @@ export interface RepeatComparison {
   identical: boolean;
   differences: Array<{ path: string; values: unknown[] }>;
   compared: string[];
+}
+
+/** Per-Run inputs that must also agree for repeats to be comparable (SC-005 environment/input fingerprints). */
+export interface RepeatSample {
+  result: FrontendAgentEvaluationResult;
+  fingerprint: { inputHash: string; imageDigest?: string; dependencyCacheSnapshotId?: string; networkPolicyId?: string };
+  /** Ordered stable private codes from producer records. */
+  codes: string[];
 }
 
 function stripNondeterministic(result: FrontendAgentEvaluationResult): Record<string, unknown> {
@@ -127,9 +141,15 @@ function flatten(value: unknown, prefix: string, out: Map<string, unknown>): voi
 }
 
 /** SC-005: identical input + environment + seed must produce identical conclusions across repeated Runs. */
-export function compareRepeats(results: FrontendAgentEvaluationResult[]): RepeatComparison {
-  if (results.length < 2) return { identical: true, differences: [], compared: [] };
-  const flattened = results.map((result) => { const out = new Map<string, unknown>(); flatten(stripNondeterministic(result), "", out); return out; });
+export function compareRepeats(samples: Array<FrontendAgentEvaluationResult | RepeatSample>): RepeatComparison {
+  if (samples.length < 2) return { identical: true, differences: [], compared: [] };
+  const flattened = samples.map((sample) => {
+    const out = new Map<string, unknown>();
+    const result = "result" in sample && "fingerprint" in sample ? sample.result : sample as FrontendAgentEvaluationResult;
+    flatten(stripNondeterministic(result), "result", out);
+    if ("fingerprint" in sample) { flatten(sample.fingerprint, "fingerprint", out); out.set("codes", sample.codes); }
+    return out;
+  });
   const keys = [...new Set(flattened.flatMap((map) => [...map.keys()]))].sort();
   const differences: RepeatComparison["differences"] = [];
   for (const key of keys) {

@@ -591,3 +591,21 @@
   0.8 with critical gate passed; remove-aria → accessibility 0.88 failed;
   force-overflow → responsive 0.33 + visual failed. `pnpm eval repeat --times
   3` on gold → identical conclusions across 21 compared fields.
+- Adversarial review (Codex gpt-5.6-sol, `review-mtvcp71n-d61uwv`) on 34770cf:
+  7 findings, all accepted as in scope. (1 critical) reference walker now
+  refuses symlinks/special files at every level (no-follow); (2) calibration
+  rejects a reference Run whose final Attempt did not complete the Agent phase
+  normally or whose tool calls were not all TOOL_SUCCEEDED — the sample would
+  otherwise be the starter or a partial tree; (3) `compareRepeats` now takes
+  `{ result, fingerprint, codes }` and compares input hash, image digest,
+  dependency snapshot, network policy and ordered producer codes; (4)
+  `expected.json` is mandatory for every reference and runtime-validated
+  (unknown keys, wrong types, empty expect all fail) — gold and alternative
+  gained explicit expectations incl. `scoreAtLeast`; (5) a report needs gold +
+  alternative + ≥1 mutation to pass and zero mutations is 0% capture;
+  (6) `git diff --binary` binary and rename records without ---/+++ headers are
+  registered from the `diff --git` header; (7) recursive `eval run` children
+  carry a 20-minute timeout. New gates V5.2-004/005/006 and V5-ENG-011.
+- Final after review fixes: 168 gates, 165 green on the first pass; the three
+  failures were the V2.2 heartbeat cluster under load (avg 47) and passed 9/9
+  on an isolated rerun. Calibration and repeat Docker gates green.

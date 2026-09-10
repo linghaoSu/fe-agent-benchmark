@@ -1,5 +1,5 @@
 import { createInterface } from "node:readline";
-import { readFileSync, readdirSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import {
@@ -16,12 +16,21 @@ const codec = new FrameCodec();
 function goldScenario(mutate: (path: string, content: string) => string = (_path, content) => content) {
   const root = process.argv[3];
   if (!root) throw new Error("react-orders-gold requires a gold source directory");
+  // Reference trees are host-authored but still untrusted input: never follow links or special files.
+  const safeEntry = (path: string, kind: "file" | "directory"): void => {
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink() || (kind === "file" ? !stat.isFile() : !stat.isDirectory())) throw new Error(`Unsafe reference entry ${path}`);
+  };
+  safeEntry(root, "directory");
   const files = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    return entry.isDirectory() ? files(path) : [path];
+    if (entry.isSymbolicLink()) throw new Error(`Unsafe reference entry ${path}`);
+    if (entry.isDirectory()) return files(path);
+    safeEntry(path, "file");
+    return [path];
   });
   // A reference may ship any writable top-level tree (src/, tests/); everything under it is written verbatim.
-  const trees = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const trees = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).map((entry) => entry.name);
   return {
     toolRequests: trees.flatMap((tree) => files(join(root, tree)).map((file) => ({ tree, file }))).map(({ tree, file }, index) => ({
       toolCallId: `reference-${index}`,

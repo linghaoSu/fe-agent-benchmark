@@ -82,3 +82,15 @@ test("GATE-V5-ENG-010: report is bounded to 50 files and 200-char details; delet
   assert.ok(analysis.checks.every((c) => c.detail.length <= 200));
   const { ctx } = await run(patch); const report = JSON.parse(ctx.staged[0].content); assert.equal(report.files.length, 50); assert.equal(report.totalFiles, 61);
 });
+
+test("GATE-V5-ENG-011: binary and rename records count as changed files", async () => {
+  const { analyzePatch, parsePatch } = await import(engineering);
+  const patch = [
+    "diff --git a/dist/bundle.js b/dist/bundle.js", "new file mode 100644", "index 0000000..1111111", "GIT binary patch", "literal 10", "zcmV;", "",
+    "diff --git a/src/old.js b/src/new.js", "similarity index 100%", "rename from src/old.js", "rename to src/new.js", "",
+  ].join("\n");
+  const files = parsePatch(patch);
+  assert.deepEqual(files.map((f) => [f.path, f.kind]), [["dist/bundle.js", "generated"], ["src/new.js", "source"]]);
+  const analysis = analyzePatch(patch, { writablePaths: ["src/**"], allowDependencyChanges: false });
+  assert.equal(analysis.checks.find((c) => c.id === "no-generated-or-build-output").passed, false);
+});
