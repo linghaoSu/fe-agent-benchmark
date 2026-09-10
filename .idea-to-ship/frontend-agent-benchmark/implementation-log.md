@@ -571,3 +571,44 @@
 - A red gate exposed missing evidence closure; the minimal coordinator guard
   now fails the Attempt with `EVALUATOR_EVIDENCE_REF_DANGLING` before a Result
   can be created.
+
+## 2026-09-10 — V5.1 Visual, Responsive and Accessibility evaluators
+
+### Scope and decisions
+
+- Added `packages/evaluator-visual` (full-page PNG per viewport in the pinned
+  Playwright container with reduced motion, animation/caret suppression and
+  `document.fonts.ready`; pure-Node PNG decoder; per-viewport mismatch ratio
+  against `evaluator/hidden/baselines/<viewport>.png`; score
+  `1 − clamp(mismatch / threshold)`; missing baselines → `skipped`
+  `VISUAL_BASELINE_MISSING`), `packages/evaluator-responsive` (document/body
+  scroll width, `[data-testid]` right-edge and zero-size checks →
+  `RESPONSIVE_OVERFLOW` / `RESPONSIVE_LAYOUT_DEFECT`) and
+  `packages/evaluator-a11y` (vendored axe-core 4.10.3 injected via
+  `addScriptTag` with wcag2a/wcag2aa plus six deterministic builtin DOM rules;
+  serious/critical violations → `A11Y_VIOLATIONS`).
+- Screenshots are staged as `screenshots/<viewport>.png.json` (base64 + sha256)
+  because the artifact store scans only text/JSON; geometry, diff and a11y
+  evidence are bounded JSON with no hidden text or full DOM.
+- Task metadata now carries `viewports`, `environment.locale/timezone`,
+  `evaluation.weights` and optional `evaluation.visual.mismatchThreshold`;
+  aggregation fills `scores.visual/responsive/accessibility`, records each
+  dimension's status under `extensions.dimensions`, and adds an informational
+  weighted `extensions.quality` over evaluated dimensions. `valid`/`solved`
+  are untouched by these dimensions.
+- `pnpm eval baseline <task-dir>` runs the gold scenario in a throwaway
+  database and writes real PNG baselines into the hidden bundle.
+- Kept Engineering evaluator, Alternative/Mutation calibration report and the
+  deterministic repeat comparator for V5.2.
+
+### Verification
+
+- Unit gates: v5-visual 9/9, v5-responsive 9/9, v5-a11y 8/8, v5-quality 2 unit
+  + 2 real-Docker scenarios — all green.
+- Real Docker gold run: visual 0.94, responsive 1, accessibility 1, quality
+  0.9867, solved=true; overflow mutation: responsive 0.33, solved unchanged.
+- Full serial suite result recorded below after the run.
+- `node --test --test-concurrency=1 tests/gate/*.test.mjs`: 146 gates, 145
+  passed on the first run; the single failure (GATE-V2.2-003, adapter handshake
+  under host load) passed 9/9 on an immediate isolated rerun. `pnpm build` and
+  `pnpm check:generated` exit 0.

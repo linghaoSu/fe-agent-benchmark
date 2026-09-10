@@ -72,6 +72,15 @@ importers:
         specifier: 2.8.1
         version: 2.8.1
 
+  packages/evaluator-a11y:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+
   packages/evaluator-build:
     dependencies:
       '@frontend-agent-benchmark/contracts':
@@ -105,7 +114,25 @@ importers:
         specifier: workspace:*
         version: link:../evaluator-core
 
+  packages/evaluator-responsive:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+
   packages/evaluator-start:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+
+  packages/evaluator-visual:
     dependencies:
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
@@ -134,6 +161,9 @@ importers:
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-a11y':
+        specifier: workspace:*
+        version: link:../evaluator-a11y
       '@frontend-agent-benchmark/evaluator-build':
         specifier: workspace:*
         version: link:../evaluator-build
@@ -146,9 +176,15 @@ importers:
       '@frontend-agent-benchmark/evaluator-playwright':
         specifier: workspace:*
         version: link:../evaluator-playwright
+      '@frontend-agent-benchmark/evaluator-responsive':
+        specifier: workspace:*
+        version: link:../evaluator-responsive
       '@frontend-agent-benchmark/evaluator-start':
         specifier: workspace:*
         version: link:../evaluator-start
+      '@frontend-agent-benchmark/evaluator-visual':
+        specifier: workspace:*
+        version: link:../evaluator-visual
       '@frontend-agent-benchmark/sandbox-docker':
         specifier: workspace:*
         version: link:../sandbox-docker

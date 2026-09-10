@@ -17,8 +17,8 @@ function App() {
   const change = (name) => (event) => setFilters((current) => ({ ...current, [name]: event.target.value }));
   return React.createElement("section", null,
     React.createElement("h1", null, "订单列表"),
-    React.createElement("input", { "data-testid": "search-input", value: filters.q, onChange: change("q"), placeholder: "搜索订单或客户" }),
-    React.createElement("select", { "data-testid": "status-filter", value: filters.status, onChange: change("status") },
+    React.createElement("input", { "data-testid": "search-input", "aria-label": "搜索订单或客户", value: filters.q, onChange: change("q"), placeholder: "搜索订单或客户" }),
+    React.createElement("select", { "data-testid": "status-filter", "aria-label": "订单状态筛选", value: filters.status, onChange: change("status") },
       React.createElement("option", { value: "" }, "全部"),
       React.createElement("option", { value: "pending" }, "待处理"),
       React.createElement("option", { value: "shipped" }, "已发货"),

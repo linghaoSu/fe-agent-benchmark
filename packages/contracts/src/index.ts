@@ -150,6 +150,11 @@ export interface PreflightedTaskBundle {
   buildOutputPaths: string[];
   appPort?: number;
   hiddenBundle?: string;
+  viewports: Array<{ name: string; width: number; height: number }>;
+  locale?: string;
+  timezone?: string;
+  weights: { functional: number; visual: number; responsive: number; accessibility: number; engineering: number };
+  visualMismatchThreshold?: number;
   criticalFunctionalTests: boolean;
   dependencyLockHash: string;
   dependencyCacheSnapshotId: string;
@@ -777,6 +782,16 @@ export function preflightTaskBundle(bundlePath: string): PreflightResult {
   return { preflight: "passed" };
 }
 
+function weightsOf(value: unknown): PreflightedTaskBundle["weights"] {
+  const weights = { functional: 1, visual: 0, responsive: 0, accessibility: 0, engineering: 0 };
+  if (!isRecord(value)) return weights;
+  for (const name of Object.keys(weights) as Array<keyof typeof weights>) {
+    const weight = value[name];
+    weights[name] = typeof weight === "number" ? weight : 0;
+  }
+  return weights;
+}
+
 export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBundle {
   const loadedTask = loadDocument(join(bundlePath, "task.yaml"));
   if ("error" in loadedTask || !isRecord(loadedTask.document)) {
@@ -848,6 +863,16 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     buildOutputPaths: isRecord(evaluation) && Array.isArray(evaluation.buildOutputPaths) ? evaluation.buildOutputPaths.filter((value): value is string => typeof value === "string") : [],
     ...(isRecord(evaluation) && isRecord(evaluation.app) && typeof evaluation.app.port === "number" ? { appPort: evaluation.app.port } : {}),
     ...(isRecord(evaluation) && typeof evaluation.hiddenBundle === "string" ? { hiddenBundle: evaluation.hiddenBundle } : {}),
+    viewports: Array.isArray(task.viewports)
+      ? task.viewports.filter((value): value is { name: string; width: number; height: number } => (
+        isRecord(value) && typeof value.name === "string" && typeof value.width === "number" && typeof value.height === "number"
+      )).map(({ name, width, height }) => ({ name, width, height }))
+      : [],
+    ...(typeof environment.locale === "string" ? { locale: environment.locale } : {}),
+    ...(typeof environment.timezone === "string" ? { timezone: environment.timezone } : {}),
+    weights: weightsOf(isRecord(evaluation) ? evaluation.weights : undefined),
+    ...(isRecord(evaluation) && isRecord(evaluation.visual) && typeof evaluation.visual.mismatchThreshold === "number"
+      ? { visualMismatchThreshold: evaluation.visual.mismatchThreshold } : {}),
     criticalFunctionalTests: isRecord(evaluation) && isRecord(evaluation.requiredGates) && evaluation.requiredGates.criticalFunctionalTests === true,
     dependencyLockHash: snapshot.lockfileHash,
     dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId,

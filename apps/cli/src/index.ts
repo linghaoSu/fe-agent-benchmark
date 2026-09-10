@@ -9,8 +9,14 @@ import {
   writeFileSync,
   readFileSync,
   existsSync,
+  mkdtempSync,
+  lstatSync,
+  chmodSync,
+  readdirSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 
 import {
   checksumTaskBundle,
@@ -54,15 +60,17 @@ import {
 const EVALUATION_COMMAND_TIMEOUT_MS = 5 * 60_000;
 // Host-only vendored playwright-core matching the pinned browser image; mounted read-only into the browser container only.
 const PLAYWRIGHT_RUNTIME_PATH = new URL("../../../tests/fixtures/playwright-runtime", import.meta.url).pathname;
+const AXE_SOURCE_PATH = join(PLAYWRIGHT_RUNTIME_PATH, "axe", "axe.min.js");
 const usage = [
   "Usage: pnpm eval validate <path>",
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
+  "pnpm eval baseline <task-dir> [--scenario react-orders-gold] [--sandbox docker]",
 ].join(" | ");
 const documentKindDetection = [
   "validate selects kinds by the first top-level marker in this order:",
@@ -139,6 +147,59 @@ function databasePath(option: string | true | undefined): string {
   return resolve(process.cwd(), typeof option === "string" ? option : "runs/eval.sqlite");
 }
 
+/**
+ * Runs the gold reference through the Docker pipeline in a throwaway database and copies the
+ * resulting screenshots into the hidden bundle as visual baselines. Screenshots are staged as
+ * base64 JSON because the artifact store only scans text; the baseline files are real PNGs.
+ */
+async function writeBaselines(bundlePath: string, arguments_: string[]): Promise<boolean> {
+  const parsed = parseArguments(arguments_);
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--scenario" && option !== "--sandbox")) return false;
+  const bundle = resolve(process.cwd(), bundlePath);
+  const scenario = (parsed.options["--scenario"] as string | undefined) ?? "react-orders-gold";
+  const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
+  const metadata = readPreflightedTaskBundle(bundle);
+  if (!metadata.hiddenBundle) throw new Error("Task declares no evaluation.hiddenBundle");
+  const root = mkdtempSync(join(tmpdir(), "fab-baseline-"));
+  const databasePath = join(root, "eval.sqlite");
+  try {
+    const cli = (...args: string[]) => {
+      const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+      if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
+      return JSON.parse(result.stdout) as Record<string, unknown>;
+    };
+    const created = cli("run", "create", bundle, "--seed", "1", "--sandbox", sandbox, "--db", databasePath) as { runId: string };
+    cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
+    const shown = cli("run", "show", created.runId, "--db", databasePath) as { run: { status: string }; artifacts: Array<{ relativePath: string }> };
+    if (shown.run.status !== "COMPLETED") throw new Error(`Baseline Run ended ${shown.run.status}`);
+    const attemptDirectory = join(root, created.runId, "attempts", "1");
+    const target = join(bundle, metadata.hiddenBundle, "baselines");
+    mkdirSync(target, { recursive: true });
+    const written: Array<{ viewport: string; sha256: string }> = [];
+    for (const artifact of shown.artifacts.filter(({ relativePath }) => /^screenshots\/.+\.png\.json$/.test(relativePath))) {
+      const shot = JSON.parse(readFileSync(join(attemptDirectory, artifact.relativePath), "utf8")) as { pngBase64?: string; sha256?: string };
+      if (!shot.pngBase64) continue;
+      const viewport = artifact.relativePath.slice("screenshots/".length, -".png.json".length);
+      const bytes = Buffer.from(shot.pngBase64, "base64");
+      writeFileSync(join(target, `${viewport}.png`), bytes);
+      written.push({ viewport, sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}` });
+    }
+    console.log(JSON.stringify({ runId: created.runId, scenario, baselines: written }));
+    process.exitCode = written.length ? 0 : 1;
+    return true;
+  } finally {
+    // Frozen snapshots are chmod a-w; restore write bits before removing the throwaway root.
+    const unlock = (path: string): void => {
+      let stat; try { stat = lstatSync(path); } catch { return; }
+      if (stat.isSymbolicLink()) return;
+      try { chmodSync(path, stat.mode | 0o700); } catch {}
+      if (stat.isDirectory()) for (const name of readdirSync(path)) unlock(join(path, name));
+    };
+    unlock(root);
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 function createRun(arguments_: string[]): boolean {
   const parsed = parseArguments(arguments_);
   if (
@@ -184,7 +245,7 @@ function createRun(arguments_: string[]): boolean {
     seed,
     budgets: metadata.budgets,
     permissions: metadata.permissions,
-    evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths, appPort: metadata.appPort, hiddenBundle: metadata.hiddenBundle, requiredGates: { criticalFunctionalTests: metadata.criticalFunctionalTests } },
+    evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths, appPort: metadata.appPort, hiddenBundle: metadata.hiddenBundle, requiredGates: { criticalFunctionalTests: metadata.criticalFunctionalTests }, viewports: metadata.viewports, locale: metadata.locale, timezone: metadata.timezone, weights: metadata.weights, visualMismatchThreshold: metadata.visualMismatchThreshold },
     sandbox: {
       runner: sandboxRunner,
       imageReference,
@@ -352,7 +413,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
-      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop"].includes(parsed.options["--mock-scenario"] as string))
+      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string))
     || (parsed.options["--evaluators"] !== undefined && parsed.options["--evaluators"] !== "noop" && parsed.options["--evaluators"] !== "pipeline")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
@@ -368,7 +429,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     const resolved = JSON.parse(storedRun.resolvedInputJson) as {
       adapterProtocol?: { maxFrameBytes: number; heartbeatTimeoutSeconds: number };
       permissions?: { writablePaths: string[]; forbiddenPaths: string[]; allowDependencyChanges: boolean };
-      evaluation?: { commands: { install: string; typecheck: string; lint: string; test: string; build: string; start: string }; buildOutputPaths: string[]; appPort?: number; hiddenBundle?: string; requiredGates?: { criticalFunctionalTests?: boolean } };
+      evaluation?: { commands: { install: string; typecheck: string; lint: string; test: string; build: string; start: string }; buildOutputPaths: string[]; appPort?: number; hiddenBundle?: string; viewports?: Array<{ name: string; width: number; height: number }>; locale?: string; timezone?: string; weights?: Record<string, number>; visualMismatchThreshold?: number; requiredGates?: { criticalFunctionalTests?: boolean } };
       budgets?: { maxWallTimeSeconds: number };
       sandbox?: {
         runner: "fake" | "docker";
@@ -415,7 +476,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             args: [
               new URL("../../../packages/adapter-mock/dist/index.js", import.meta.url).pathname,
               ...(typeof parsed.options["--mock-scenario"] === "string"
-                ? [`--${parsed.options["--mock-scenario"]}`, ...(parsed.options["--mock-scenario"] === "react-orders-gold" ? [join(task.path, "references", "gold")] : [])]
+                ? [`--${parsed.options["--mock-scenario"]}`, ...(["react-orders-gold", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string) ? [join(task.path, "references", "gold")] : [])]
                 : sandbox ? ["--docker-workspace"] : []),
             ],
           },
@@ -444,6 +505,13 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
       commands: resolved.evaluation?.commands ?? {},
       app: resolved.evaluation?.appPort ? { command: resolved.evaluation.commands.start, port: resolved.evaluation.appPort } : undefined,
       hiddenBundlePath: resolved.evaluation?.hiddenBundle ? join(task.path, resolved.evaluation.hiddenBundle) : undefined,
+      quality: {
+        viewports: resolved.evaluation?.viewports ?? [],
+        locale: resolved.evaluation?.locale,
+        timezone: resolved.evaluation?.timezone,
+        visualMismatchThreshold: resolved.evaluation?.visualMismatchThreshold,
+        axeSource: existsSync(AXE_SOURCE_PATH) ? readFileSync(AXE_SOURCE_PATH, "utf8") : undefined,
+      },
     }) : new NoopEvaluator();
     const run = await new RunExecutor({
       store,
@@ -497,6 +565,8 @@ try {
   } else if (command === "run" && inputPath === "doctor" && doctorRun(extraArguments)) {
     // Handled above.
   } else if (command === "run" && inputPath === "export" && exportRun(extraArguments)) {
+    // Handled above.
+  } else if (command === "baseline" && inputPath && await writeBaselines(inputPath, extraArguments)) {
     // Handled above.
   } else {
     printUsage();

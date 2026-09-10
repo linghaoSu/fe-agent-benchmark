@@ -66,6 +66,9 @@ export type FrontendAgentEvaluationTask = {
       "accessibility": number;
       "engineering": number;
     };
+    "visual"?: {
+      "mismatchThreshold"?: number;
+    };
     "buildOutputPaths"?: Array<string>;
     "app"?: {
       "port": number;

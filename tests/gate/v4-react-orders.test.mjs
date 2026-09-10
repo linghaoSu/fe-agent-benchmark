@@ -13,7 +13,7 @@ const sandbox = new URL("../../packages/sandbox-docker/dist/index.js", import.me
 const daemon = spawnSync("docker", ["version", "--format", "{{.Server.Version}}"], { encoding: "utf8" });
 const unavailable = daemon.error || daemon.status !== 0 ? `DOCKER_UNAVAILABLE: ${(daemon.error?.message || daemon.stderr || "daemon unreachable").trim()}` : false;
 
-function cli(...args) { return spawnSync("pnpm", ["eval", ...args], { cwd: repoRoot, encoding: "utf8", timeout: 120_000, maxBuffer: 10 * 1024 * 1024 }); }
+function cli(...args) { return spawnSync("pnpm", ["eval", ...args], { cwd: repoRoot, encoding: "utf8", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 }); }
 function json(result) { assert.equal(result.status, 0, result.stderr || result.stdout); return JSON.parse(result.stdout); }
 
 test("GATE-V4.2b-001: react orders bundle validates with only vendored proxy dependencies", () => {
@@ -46,7 +46,7 @@ test("GATE-V4.2b-002: private evaluator and gold reference are absent from the A
 });
 
 function dockerScenario(name, verify) {
-  test(`GATE-V4.2b-Docker: ${name}`, { skip: unavailable, timeout: 180_000 }, () => {
+  test(`GATE-V4.2b-Docker: ${name}`, { skip: unavailable, timeout: 420_000 }, () => {
     const root = mkdtempSync(join(tmpdir(), "fab-react-orders-"));
     const db = join(root, "eval.sqlite");
     try {

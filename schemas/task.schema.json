@@ -303,6 +303,13 @@
           },
           "additionalProperties": false
         },
+        "visual": {
+          "type": "object",
+          "properties": {
+            "mismatchThreshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false
+        },
         "buildOutputPaths": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },

@@ -510,3 +510,31 @@
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 116/116,
   0 skipped; build, check:generated, task validate/checksum exit 0. V4 stage
   complete.
+
+## 2026-09-10 — V5.1 Visual / Responsive / Accessibility evaluators red → green
+
+- Workflow change: implementation by three parallel in-session sub agents
+  (one package each: evaluator-visual, evaluator-responsive, evaluator-a11y)
+  with unit gates written first (`v5-visual` 9, `v5-responsive` 9, `v5-a11y`
+  8 — 26/26); Claude wired the shared plumbing (task metadata viewports /
+  locale / timezone / weights / `evaluation.visual.mismatchThreshold`, run
+  input, `PipelineEvaluationPhase` plugin list, aggregation, `eval baseline`
+  CLI) and verified on real Docker + Chromium.
+- Red on real Docker: the react-orders-filter-017 bundle declared no
+  `viewports`, so every quality dimension came back `not_evaluated`; the gold
+  reference's search input and status select had no accessible names
+  (axe `select-name` critical + builtin `form-labels`) → A11Y_VIOLATIONS 0.88;
+  no baselines existed → VISUAL_BASELINE_MISSING.
+- Green: viewports + weights (0.5/0.2/0.1/0.1/0.1) added to the task; gold and
+  starter controls carry `aria-label`; `pnpm eval baseline
+  datasets/tasks/react-orders-filter-017` generated 3 PNG baselines from the
+  gold run (desktop 1440×900, tablet 768×1024, mobile 375×812). Gold →
+  VISUAL_PASSED 0.94, RESPONSIVE_PASSED 1, A11Y_PASSED 1, quality 0.9867,
+  solved=true. New `react-orders-mutation-overflow` scenario (table
+  `min-width: 2000px`) → RESPONSIVE_OVERFLOW 0.33 and visual mismatch while
+  functional stays passed and `solved` is unchanged — quality dimensions never
+  offset the functional gate.
+- Baseline command initially failed to remove its throwaway root because the
+  frozen snapshot is `a-w`; it now restores write bits before `rmSync`.
+- `tests/gate/v5-quality.test.mjs`: baseline PNG shape, hidden baselines absent
+  from every Agent mount, and the two real-Docker scenarios — 4/4.

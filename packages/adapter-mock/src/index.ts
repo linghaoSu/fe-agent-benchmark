@@ -13,7 +13,7 @@ const attemptId = process.env.FAB_ATTEMPT_ID;
 if (!runId || !attemptId) throw new Error("FAB_RUN_ID and FAB_ATTEMPT_ID are required");
 
 const codec = new FrameCodec();
-function goldScenario() {
+function goldScenario(mutate: (path: string, content: string) => string = (_path, content) => content) {
   const root = process.argv[3];
   if (!root) throw new Error("react-orders-gold requires a gold source directory");
   const files = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -24,7 +24,7 @@ function goldScenario() {
     toolRequests: files(join(root, "src")).map((file, index) => ({
       toolCallId: `react-orders-gold-${index}`,
       tool: "write_file",
-      arguments: { path: join("src", relative(join(root, "src"), file)), content: readFileSync(file, "utf8") },
+      arguments: { path: join("src", relative(join(root, "src"), file)), content: mutate(relative(join(root, "src"), file), readFileSync(file, "utf8")) },
     })),
     patch: "",
   };
@@ -58,6 +58,10 @@ const scenario = process.argv[2]
       toolRequests: [{ toolCallId: "forbidden-write", tool: "write_file", arguments: { path: "scripts/check.mjs", content: "process.exit(1);\n" } }], patch: "diff --git a/scripts/check.mjs b/scripts/check.mjs\n--- a/scripts/check.mjs\n+++ b/scripts/check.mjs\n@@ -1 +1 @@\n-process.exit(0);\n+process.exit(1);\n",
     } : process.argv[2] === "--react-orders-gold" ? goldScenario()
     : process.argv[2] === "--react-orders-noop" ? { toolRequests: [], patch: "" }
+    // Gold behaviour with a forced horizontal overflow: functional stays green, responsive must fail.
+    : process.argv[2] === "--react-orders-mutation-overflow" ? goldScenario((path, content) => (
+      path === "app.js" ? content.replace('React.createElement("table", null,', 'React.createElement("table", { style: { minWidth: "2000px" } },') : content
+    ))
     : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {
       toolRequests?: Array<{ toolCallId: string; tool: string; arguments: Record<string, unknown> }>;
       reportEnv?: boolean;

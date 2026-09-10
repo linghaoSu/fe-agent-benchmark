@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, cpSync, lstatSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -47,6 +47,9 @@ import { IntegrityEvaluator } from "@frontend-agent-benchmark/evaluator-integrit
 import { BuildEvaluator } from "@frontend-agent-benchmark/evaluator-build";
 import { StartEvaluator } from "@frontend-agent-benchmark/evaluator-start";
 import { PlaywrightEvaluator } from "@frontend-agent-benchmark/evaluator-playwright";
+import { VisualEvaluator } from "@frontend-agent-benchmark/evaluator-visual";
+import { ResponsiveEvaluator } from "@frontend-agent-benchmark/evaluator-responsive";
+import { A11yEvaluator } from "@frontend-agent-benchmark/evaluator-a11y";
 import { DockerSandboxRuntime } from "@frontend-agent-benchmark/sandbox-docker";
 
 export interface PhaseContext {
@@ -356,6 +359,13 @@ export class PipelineEvaluationPhase implements EvaluationPhase {
     commands: Partial<Record<"install" | "typecheck" | "lint" | "test" | "build", string>>;
     app?: { command: string; port: number };
     hiddenBundlePath?: string;
+    quality?: {
+      viewports: Array<{ name: string; width: number; height: number }>;
+      locale?: string;
+      timezone?: string;
+      visualMismatchThreshold?: number;
+      axeSource?: string;
+    };
   }) {}
   async run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult[]> {
     const snapshot = this.options.snapshotPath(context);
@@ -381,6 +391,18 @@ export class PipelineEvaluationPhase implements EvaluationPhase {
       ];
       if (this.options.app) plugins.push(new StartEvaluator({ command: this.options.app.command, port: this.options.app.port, start: () => runtime!.startApp(this.options.app!.command, this.options.app!.port) }));
       if (this.options.app && this.options.hiddenBundlePath) plugins.push(new PlaywrightEvaluator({ hiddenBundlePath: this.options.hiddenBundlePath, port: this.options.app.port, run: (script) => runtime!.runPlaywright(script) }));
+      if (this.options.app && this.options.quality && this.options.quality.viewports.length) {
+        const { viewports, locale, timezone, visualMismatchThreshold, axeSource } = this.options.quality;
+        const port = this.options.app.port;
+        const run = (script: string) => runtime!.runPlaywright(script);
+        const baselines = Object.fromEntries(viewports.map(({ name }) => {
+          const path = this.options.hiddenBundlePath ? join(this.options.hiddenBundlePath, "baselines", `${name}.png`) : undefined;
+          return [name, path && existsSync(path) ? readFileSync(path) : undefined];
+        }));
+        plugins.push(new VisualEvaluator({ port, viewports, locale, timezone, baselines, mismatchThreshold: visualMismatchThreshold, run }));
+        plugins.push(new ResponsiveEvaluator({ port, viewports, run }));
+        plugins.push(new A11yEvaluator({ port, viewports, axeSource, run }));
+      }
       const pipeline = new EvaluatorPipeline(plugins);
       const output = await pipeline.run({
         ...context, snapshotDigest: expected,
@@ -638,12 +660,31 @@ export class RunExecutor {
   }
 
   private finalizeResult(run: RunRecord, attempt: AttemptRecord): void {
+    // Weighted quality is informational only: it never feeds valid/solved and is computed over evaluated dimensions.
+    const qualityExtension = (weights: Record<string, number> | undefined, scores: Record<string, number | undefined>) => {
+      if (!weights) return {};
+      let weightSum = 0; let total = 0;
+      for (const [name, value] of Object.entries(scores)) {
+        if (value === undefined) continue;
+        const weight = weights[name] ?? 0; weightSum += weight; total += weight * value;
+      }
+      return weightSum > 0 ? { quality: Number((total / weightSum).toFixed(4)) } : {};
+    };
     const evaluations = this.attemptEvaluation.get(attempt.attemptId) ?? [];
     const integrity = evaluations.find((result) => result.evaluatorId === "integrity");
     const build = evaluations.find((result) => result.evaluatorId === "build");
     const functional = evaluations.find((result) => result.evaluatorId === "functional");
+    const dimension = (id: string) => {
+      const found = evaluations.find((result) => result.evaluatorId === id);
+      const refs = found?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`);
+      return {
+        gate: !found ? "not_evaluated" : found.status,
+        score: { value: found?.status === "passed" || found?.status === "failed" ? found.outcome.score ?? 0 : 0, evidenceRefs: refs && refs.length ? refs : undefined },
+      };
+    };
+    const visual = dimension("visual"); const responsive = dimension("responsive"); const accessibility = dimension("accessibility");
     const valid = integrity ? integrity.status === "passed" : true;
-    const required = JSON.parse(run.resolvedInputJson) as { evaluation?: { requiredGates?: { criticalFunctionalTests?: boolean } } };
+    const required = JSON.parse(run.resolvedInputJson) as { evaluation?: { requiredGates?: { criticalFunctionalTests?: boolean }; weights?: Record<string, number> } };
     // "not_evaluated" (no functional evaluator configured, e.g. the no-op path) leaves solved to the
     // remaining gates; "skipped" (a prerequisite failed) and "failed" both block a required gate.
     const functionalGate = !functional ? "not_evaluated" : functional.status === "passed" ? "passed" : functional.status === "failed" ? "failed" : "skipped";
@@ -663,7 +704,11 @@ export class RunExecutor {
       evidenceRefs: { valid: evidenceRefs, solved: evidenceRefs },
       scores: {
         build: score,
-        functional: { value: functional?.outcome.score ?? 0, evidenceRefs: functional?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs }, visual: { value: 0, evidenceRefs }, responsive: { value: 0, evidenceRefs }, accessibility: { value: 0, evidenceRefs }, engineering: { value: 0, evidenceRefs },
+        functional: { value: functional?.outcome.score ?? 0, evidenceRefs: functional?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs },
+        visual: { value: visual.score.value, evidenceRefs: visual.score.evidenceRefs ?? evidenceRefs },
+        responsive: { value: responsive.score.value, evidenceRefs: responsive.score.evidenceRefs ?? evidenceRefs },
+        accessibility: { value: accessibility.score.value, evidenceRefs: accessibility.score.evidenceRefs ?? evidenceRefs },
+        engineering: { value: 0, evidenceRefs },
       },
       efficiency: {
         inputTokens: 0,
@@ -673,7 +718,12 @@ export class RunExecutor {
         wallTimeSeconds: efficiency?.wallTimeSeconds ?? 0,
         costUsd: 0,
       },
-      extensions: { executionClassification: attempt.executionClassification, gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: functionalGate } },
+      extensions: {
+        executionClassification: attempt.executionClassification,
+        gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: functionalGate },
+        dimensions: { visual: visual.gate, responsive: responsive.gate, accessibility: accessibility.gate, engineering: "not_evaluated" },
+        ...qualityExtension(required.evaluation?.weights, { functional: functionalGate === "passed" || functionalGate === "failed" ? functional?.outcome.score ?? 0 : undefined, visual: visual.gate === "passed" || visual.gate === "failed" ? visual.score.value : undefined, responsive: responsive.gate === "passed" || responsive.gate === "failed" ? responsive.score.value : undefined, accessibility: accessibility.gate === "passed" || accessibility.gate === "failed" ? accessibility.score.value : undefined }),
+      },
     };
     if (!validateContractDocument(result, "result").valid) {
       throw new RunCoordinatorError("RESULT_INVALID", "Canonical Result is invalid");
