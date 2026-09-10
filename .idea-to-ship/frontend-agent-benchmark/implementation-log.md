@@ -518,3 +518,19 @@
   `pnpm check:generated` passed.
 - Docker verification could not run: `docker info` reaches an OrbStack socket
   but is denied by the managed execution sandbox (`operation not permitted`).
+
+### V4.1 coverage follow-up
+
+- Added serialized unit coverage for the full integrity/build aggregation truth
+  table, evaluator-error and digest-mismatch terminal handling, Result schema
+  validation, and evaluator evidence-reference closure.
+- Added serialized real-Docker CLI coverage for `build-pass`, `build-break`,
+  and `forbidden-write`, including evaluator-result schema validation,
+  requester export redaction, `run show` snapshot/evaluator visibility, and
+  attempt/evaluation container plus network cleanup.
+- The maintainer’s five real-Docker fixes are now covered: writable evaluation
+  copy, in-place frozen-snapshot digest, `fixtureDirectory` metadata,
+  independent evaluation-command timeout, and the corrected fixture integrity.
+- A red gate exposed missing evidence closure; the minimal coordinator guard
+  now fails the Attempt with `EVALUATOR_EVIDENCE_REF_DANGLING` before a Result
+  can be created.

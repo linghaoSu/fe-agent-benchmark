@@ -321,7 +321,7 @@ export class NoopEvaluator implements EvaluationPhase {
         score: 1,
       },
       producerRef: producerId,
-      evidenceRefs: [`noop:${context.attemptId}:empty-patch`],
+      evidenceRefs: ["evaluator-results/noop.json"],
     };
     if (!validateContractDocument(result, "evaluator-result").valid) {
       throw new RunCoordinatorError("EVALUATOR_RESULT_INVALID", "No-op evaluator result is invalid");
@@ -938,9 +938,19 @@ export class RunExecutor {
       }, producer(attempt.attemptId, "evaluator", "evaluation", "EVALUATOR_ERROR", "Evaluator returned an error", evaluationResults.flatMap((result) => result.evidenceRefs)));
     }
 
+    for (const evaluationResult of evaluationResults) {
+      const resultPath = `evaluator-results/${evaluationResult.evaluatorId}.json`;
+      if (!this.artifacts.hasStagedArtifact(attempt.runId, attempt.attemptId, resultPath)) this.artifacts.stage({ runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal, logicalType: "evaluator_result", mime: "application/json", relativePath: resultPath, audience: "maintainer_only", producerRef: evaluationResult.producerRef, content: JSON.stringify(evaluationResult) });
+    }
+    const missingEvidence = evaluationResults.flatMap((result) => result.evidenceRefs)
+      .find((ref) => !this.artifacts.hasStagedArtifact(attempt.runId, attempt.attemptId, ref));
+    if (missingEvidence) {
+      return this.transitionAttempt(attempt.attemptId, "FAILED", "EVALUATOR_EVIDENCE_REF_DANGLING", {
+        executionClassification: "evaluator_error", terminationCause: "EVALUATOR_EVIDENCE_REF_DANGLING", terminationPhase: "evaluation", failureCode: "EVALUATOR_EVIDENCE_REF_DANGLING",
+      }, producer(attempt.attemptId, "evaluator", "evaluation", "EVALUATOR_EVIDENCE_REF_DANGLING", `Evaluator evidence is missing: ${missingEvidence}`, [missingEvidence]));
+    }
     this.attemptEvaluation.set(attempt.attemptId, evaluationResults);
     for (const evaluationResult of evaluationResults) {
-      if (!evaluationResult.evidenceRefs.includes(`evaluator-results/${evaluationResult.evaluatorId}.json`)) this.artifacts.stage({ runId: attempt.runId, attemptId: attempt.attemptId, ordinal: attempt.ordinal, logicalType: "evaluator_result", mime: "application/json", relativePath: `evaluator-results/${evaluationResult.evaluatorId}.json`, audience: "maintainer_only", producerRef: evaluationResult.producerRef, content: JSON.stringify(evaluationResult) });
       this.store.producers.create({ producerId: evaluationResult.producerRef, attemptId: attempt.attemptId, kind: "evaluator", phase: "evaluation", privateCode: evaluationResult.outcome.privateCode, boundedSummary: evaluationResult.outcome.summary ?? "Evaluator completed", artifactRefs: evaluationResult.evidenceRefs });
     }
 

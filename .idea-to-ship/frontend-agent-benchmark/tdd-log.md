@@ -1,5 +1,15 @@
 # TDD Log — frontend-agent-benchmark
 
+## 2026-09-09 — V4.1 evaluator coverage red → green
+
+- Red: `GATE-V4.1-006` showed a schema-valid evaluator result could cite a
+  nonexistent evidence artifact and still finalize a completed Result.
+- Green: coordinator rejects it as `EVALUATOR_EVIDENCE_REF_DANGLING`; unit
+  gates cover integrity/build aggregation, evaluator errors, digest mismatch,
+  Result schema validation, and evidence closure.
+- Added Docker CLI gates for `build-pass`, `build-break`, and
+  `forbidden-write`; this host skips them cleanly as `DOCKER_UNAVAILABLE`.
+
 ## 2026-09-09 — V3.3 phase barrier red → green
 
 - Red: no immutable post-Agent workspace collector existed.
@@ -420,3 +430,19 @@
   `forbidden-write` → valid=false INTEGRITY_FORBIDDEN_PATH, build skipped.
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 101/101,
   0 skipped; build and check:generated exit 0.
+- Follow-up verification (2026-09-10, Claude, Docker reachable): real-Docker
+  V4.1 gates surfaced two production defects. (1) The pipeline staged a
+  skipped/passed evaluator result before appending its own artifact path to
+  `evidenceRefs`, so the on-disk `evaluator-results/build.json` for a skipped
+  Build failed the schema's non-empty `evidenceRefs` rule; the document now
+  carries its self-reference before staging. (2) Integrity always cited
+  `patch.diff` as evidence, but an Attempt with no workspace change stages no
+  patch, tripping the new `EVALUATOR_EVIDENCE_REF_DANGLING` closure check; the
+  ref is cited only when a patch exists. Test-side: requester export lands at
+  `exports/requester/`, not `exports/<exportId>/`. A full-suite red streak of
+  every Docker gate reporting `SANDBOX_IMAGE_UNAVAILABLE` was a genuinely
+  pruned local image (re-pulled by digest) — the preflight code worked as
+  designed.
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 107/107,
+  0 skipped, incl. 3 real-Docker V4.1 scenarios with requester export; build
+  and check:generated exit 0. V4.1 complete.

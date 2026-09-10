@@ -288,6 +288,11 @@ export class ArtifactStoreFs {
     return artifact;
   }
 
+  hasStagedArtifact(runId: string, attemptId: string, relativePath: string): boolean {
+    return (this.staged.get(this.key(runId, attemptId)) ?? [])
+      .some((artifact) => artifact.relativePath === relativePath);
+  }
+
   finalize(runId: string, attemptId: string, ordinal: number): {
     manifestChecksum: string;
     artifacts: ArtifactRecord[];

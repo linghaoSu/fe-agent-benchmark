@@ -31,8 +31,10 @@ export class EvaluatorPipeline {
       const unmet = prerequisites.some((id) => results.find((result) => result.evaluatorId === id)?.status !== "passed");
       if (unmet) {
         const producerRef = `attempt:${context.attemptId}:evaluator:${meta.id}`;
-        const result: FrontendAgentEvaluatorResult = { schemaVersion: 1, evaluatorResultId: randomUUID(), evaluatorId: meta.id, evaluatorVersion: meta.version, attemptId: context.attemptId, stage: meta.stage, prerequisites, deterministic: meta.deterministic, status: "skipped", evaluatedSnapshotDigest: context.snapshotDigest, outcome: { passed: false, privateCode: "PREREQUISITE_NOT_PASSED", summary: "Prerequisite evaluator did not pass" }, producerRef, evidenceRefs: [] };
-        const ref = context.stageArtifact({ logicalType: "evaluator_result", mime: "application/json", relativePath: `evaluator-results/${meta.id}.json`, content: JSON.stringify(result), producerRef }); result.evidenceRefs = [ref]; results.push(result); continue;
+        // The staged document must already carry its own self-reference so the on-disk file is schema-valid.
+        const relativePath = `evaluator-results/${meta.id}.json`;
+        const result: FrontendAgentEvaluatorResult = { schemaVersion: 1, evaluatorResultId: randomUUID(), evaluatorId: meta.id, evaluatorVersion: meta.version, attemptId: context.attemptId, stage: meta.stage, prerequisites, deterministic: meta.deterministic, status: "skipped", evaluatedSnapshotDigest: context.snapshotDigest, outcome: { passed: false, privateCode: "PREREQUISITE_NOT_PASSED", summary: "Prerequisite evaluator did not pass" }, producerRef, evidenceRefs: [relativePath] };
+        context.stageArtifact({ logicalType: "evaluator_result", mime: "application/json", relativePath, content: JSON.stringify(result), producerRef }); results.push(result); continue;
       }
       let result: FrontendAgentEvaluatorResult;
       try { await plugin.prepare(context); result = await plugin.execute(context); }
@@ -40,8 +42,10 @@ export class EvaluatorPipeline {
       finally { try { await plugin.cleanup(context); } catch {} }
       if (!validateContractDocument(result, "evaluator-result").valid || result.attemptId !== context.attemptId) result = errorResult(plugin, context, "EVALUATOR_RESULT_INVALID", "Evaluator returned an invalid result");
       if (result.evaluatedSnapshotDigest !== context.snapshotDigest) result = errorResult(plugin, context, "SNAPSHOT_DIGEST_CHANGED", "Evaluator reported a different snapshot digest");
-      const ref = context.stageArtifact({ logicalType: "evaluator_result", mime: "application/json", relativePath: `evaluator-results/${meta.id}.json`, content: JSON.stringify(result), producerRef: result.producerRef });
-      result = { ...result, evidenceRefs: [...new Set([...result.evidenceRefs, ref])] }; results.push(result);
+      const relativePath = `evaluator-results/${meta.id}.json`;
+      result = { ...result, evidenceRefs: [...new Set([...result.evidenceRefs, relativePath])] };
+      context.stageArtifact({ logicalType: "evaluator_result", mime: "application/json", relativePath, content: JSON.stringify(result), producerRef: result.producerRef });
+      results.push(result);
     }
     return { results };
   }
