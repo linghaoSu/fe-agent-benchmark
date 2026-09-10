@@ -644,8 +644,11 @@ export class RunExecutor {
     const functional = evaluations.find((result) => result.evaluatorId === "functional");
     const valid = integrity ? integrity.status === "passed" : true;
     const required = JSON.parse(run.resolvedInputJson) as { evaluation?: { requiredGates?: { criticalFunctionalTests?: boolean } } };
-    const functionalGate = functional?.status === "passed" ? "passed" : functional?.status === "failed" ? "failed" : "skipped";
-    const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed") && (!required.evaluation?.requiredGates?.criticalFunctionalTests || functionalGate === "passed");
+    // "not_evaluated" (no functional evaluator configured, e.g. the no-op path) leaves solved to the
+    // remaining gates; "skipped" (a prerequisite failed) and "failed" both block a required gate.
+    const functionalGate = !functional ? "not_evaluated" : functional.status === "passed" ? "passed" : functional.status === "failed" ? "failed" : "skipped";
+    const functionalRequired = Boolean(required.evaluation?.requiredGates?.criticalFunctionalTests) && functionalGate !== "not_evaluated";
+    const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed") && (!functionalRequired || functionalGate === "passed");
     const efficiency = this.attemptEfficiency.get(attempt.attemptId);
     const evidenceRefs = evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`));
     const score = { value: build?.status === "passed" ? 1 : 0, evidenceRefs: build?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs };

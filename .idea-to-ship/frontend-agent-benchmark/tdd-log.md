@@ -455,3 +455,30 @@
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 107/107,
   0 skipped, incl. 3 real-Docker V4.1 scenarios with requester export; build
   and check:generated exit 0. V4.1 complete.
+- Follow-up verification (2026-09-10, Claude, Docker reachable; work now on
+  `main`): the real browser path failed four ways. (1) The Playwright plugin
+  staged its per-test report at `evaluator-results/functional.json`, the path
+  reserved for the evaluator result document → EEXIST; moved to
+  `functional/tests.json`. (2) The official `mcr.microsoft.com/playwright`
+  image ships browsers under `/ms-playwright` but no library, so
+  `require('@playwright/test')` failed silently and every functional run
+  scored 0; `playwright-core@1.59.1` (the version matching the image) is now
+  vendored host-only under `tests/fixtures/playwright-runtime/` and
+  bind-mounted read-only at `/opt/playwright-runtime` with `NODE_PATH`; the
+  runner requires `playwright-core`; `/dev/shm` tmpfs added for Chromium.
+  (3) Requester export of an evaluated Run was denied
+  `EXPORT_REFERENCE_CLOSURE_FAILED` because the host-path heuristic matched
+  URL paths like `/api/health` inside the Agent's own patch/events; the
+  heuristic now matches only well-known host roots. (4) The new `solved` rule
+  treated a missing functional evaluator as a failed required gate, breaking
+  the no-op Run export (`UNSOLVED`); `not_evaluated` is now distinct from
+  `skipped`. Also: Codex had made the Agent network unconditional; Agent
+  containers are back on `--network none` unless services or `appNetwork`
+  (app port declared) require the internal network, and the `app` alias is
+  applied only in that case.
+- Real-Docker end-to-end on node-min: `build-pass` → START_PASSED,
+  FUNCTIONAL_PASSED, solved=true, scores.functional=1;
+  `functional-break` → FUNCTIONAL_CRITICAL_FAILED, solved=false,
+  scores.functional=0.5, scores.build=1.
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 112/112,
+  0 skipped; build and check:generated exit 0. V4.2a complete.

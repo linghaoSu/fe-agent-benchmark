@@ -381,6 +381,9 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
     excludedBundlePaths?: string[];
     playwrightImage?: string;
+    playwrightRuntimePath?: string;
+    /** Create the internal network even without services so the evaluated app is reachable at http://app:<port>. */
+    appNetwork?: boolean;
     resources?: Partial<SandboxResources>;
     commandTimeoutMs?: number;
   }) {
@@ -395,6 +398,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     this.services = options.services;
     this.excludedBundlePaths = options.excludedBundlePaths ?? [];
     this.playwrightImage = options.playwrightImage ?? DEFAULT_PINNED_PLAYWRIGHT_IMAGE;
+    this.playwrightRuntimePath = options.playwrightRuntimePath;
+    this.appNetwork = options.appNetwork ?? false;
     if (
       !Number.isSafeInteger(this.resources.memoryBytes) || this.resources.memoryBytes <= 0
       || !Number.isFinite(this.resources.cpus) || this.resources.cpus <= 0
@@ -406,6 +411,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
   private readonly services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
   private readonly excludedBundlePaths: string[];
   private readonly playwrightImage: string;
+  private readonly playwrightRuntimePath: string | undefined;
+  private readonly appNetwork: boolean;
 
   async start(context: SandboxAttemptContext): Promise<void> {
     if (!PINNED_IMAGE.test(this.imageReference)) {
@@ -459,7 +466,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     }
 
     try {
-      {
+      // Agent containers stay on `--network none` unless the Task declares in-Run services or an app to evaluate.
+      if (this.services?.mockApi || this.services?.packageProxy || this.appNetwork) {
         state.networkId = await this.client.createNetwork({
           name: networkNameForAttempt(context.attemptId), internal: true,
           labels: { "frontend-agent-benchmark.attempt": context.attemptId },
@@ -498,7 +506,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         workdir: "/workspace",
         networkMode: state.networkId ?? "none",
         ...(state.networkId ? { dns: ["127.0.0.1"], extraHosts: state.serviceHosts } : {}),
-        ...(state.networkId ? { networkAliases: ["app"] } : {}),
+        ...(state.networkId && this.appNetwork ? { networkAliases: ["app"] } : {}),
         ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
@@ -577,7 +585,12 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     if (!state.networkId || !PINNED_IMAGE.test(this.playwrightImage)) throw new SandboxDockerError(SANDBOX_IMAGE_UNAVAILABLE, "Pinned Playwright image is unavailable");
     const image = await this.client.inspectImage(this.playwrightImage);
     if (!image) throw new SandboxDockerError(SANDBOX_IMAGE_UNAVAILABLE, `Pinned Playwright image is unavailable: ${this.playwrightImage}`);
-    const id = await this.client.createContainer({ name: `${containerNameForAttempt(this.activeAttemptId!)}-playwright`, image: this.playwrightImage, user: "1001:1001", workdir: "/tmp", networkMode: state.networkId, readOnlyRootfs: true, noNewPrivileges: true, resources: this.resources, mounts: [], tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777"] });
+    // The official image ships browsers but no library; the matching playwright-core is vendored host-side and mounted read-only.
+    const runtime = this.playwrightRuntimePath;
+    if (!runtime || !existsSync(join(runtime, "node_modules", "playwright-core", "package.json"))) {
+      throw new SandboxDockerError(SANDBOX_IMAGE_UNAVAILABLE, "Playwright runtime library mount is unavailable");
+    }
+    const id = await this.client.createContainer({ name: `${containerNameForAttempt(this.activeAttemptId!)}-playwright`, image: this.playwrightImage, user: "1001:1001", workdir: "/tmp", networkMode: state.networkId, readOnlyRootfs: true, noNewPrivileges: true, resources: this.resources, mounts: [{ source: runtime, target: "/opt/playwright-runtime", readOnly: true }], tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777", "/dev/shm:rw,nosuid,nodev,size=256m"], environment: { NODE_PATH: "/opt/playwright-runtime/node_modules", HOME: "/tmp", PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright" } });
     try { await this.client.startContainer(id); return await this.client.execContainer(id, { user: "1001:1001", workdir: "/tmp", command: ["node", "-e", "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>Function('require',s)(require))"], input }); }
     finally { await this.client.removeContainer(id); }
   }

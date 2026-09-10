@@ -52,6 +52,8 @@ import {
 
 // Evaluation commands (install/test/build) are bounded independently of the Agent wall budget.
 const EVALUATION_COMMAND_TIMEOUT_MS = 5 * 60_000;
+// Host-only vendored playwright-core matching the pinned browser image; mounted read-only into the browser container only.
+const PLAYWRIGHT_RUNTIME_PATH = new URL("../../../tests/fixtures/playwright-runtime", import.meta.url).pathname;
 const usage = [
   "Usage: pnpm eval validate <path>",
   "pnpm eval checksum <task-dir-or-task-yaml>",
@@ -432,7 +434,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     const evaluator = evaluatorMode === "pipeline" ? new PipelineEvaluationPhase({
       artifacts,
       snapshotPath: (context) => `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/snapshot`,
-      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services }),
+      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services, playwrightRuntimePath: PLAYWRIGHT_RUNTIME_PATH, appNetwork: Boolean(resolved.evaluation?.appPort) }),
       // An Attempt with no workspace changes stages no patch.diff; integrity then evaluates an empty patch.
       patch: (context) => {
         const path = `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/patch.diff`;

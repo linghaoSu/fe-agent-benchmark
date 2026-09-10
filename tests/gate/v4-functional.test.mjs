@@ -39,7 +39,7 @@ test("GATE-V4.2a-002: functional output is sanitized and scored", async () => {
   try {
     const result = await new PlaywrightEvaluator({ hiddenBundlePath: root, port: 3000, run: async () => ({ exitCode: 0, stdout: JSON.stringify([{ id: "title-renders", critical: true, passed: true }, { id: "health-endpoint", critical: false, passed: false }]), stderr: "private assertion text" }) }).execute(ctx);
     assert.equal(result.status, "passed"); assert.equal(result.outcome.score, 0.5);
-    const artifact = JSON.parse(ctx.staged.find((x) => x.relativePath === "evaluator-results/functional.json").content);
+    const artifact = JSON.parse(ctx.staged.find((x) => x.relativePath === "functional/tests.json").content);
     assert.deepEqual(artifact.tests, [{ id: "title-renders", passed: true, critical: true, message: "passed" }, { id: "health-endpoint", passed: false, critical: false, message: "failed" }]);
   } finally { removeTree(root); }
 });
@@ -49,7 +49,7 @@ test("GATE-V4.2a-003: hidden bundle is absent from every Agent mount", async () 
   writeFileSync(join(root, "package.json"), "{}"); writeFileSync(join(root, "visible.txt"), "visible");
   mkdirSync(join(root, "evaluator", "hidden"), { recursive: true }); writeFileSync(join(root, "evaluator", "hidden", "spec.mjs"), "secret");
   const specs = []; const client = { ping: async () => {}, inspectImage: async () => ({ id: "image", repoDigests: [] }), createNetwork: async () => "network", removeNetwork: async () => {}, listNetworks: async () => [], containerNetworkIp: async () => "10.0.0.2", createContainer: async (spec) => { specs.push(spec); return `c${specs.length}`; }, startContainer: async () => {}, execContainer: async () => ({ exitCode: 0, stdout: "", stderr: "" }), removeContainer: async () => {} };
-  const runtime = new DockerSandboxRuntime({ client, imageReference: DEFAULT_PINNED_NODE_IMAGE, bundlePath: root, writablePaths: ["src/**"], forbiddenPaths: ["evaluator/**"], excludedBundlePaths: ["evaluator"] });
+  const runtime = new DockerSandboxRuntime({ client, imageReference: DEFAULT_PINNED_NODE_IMAGE, bundlePath: root, writablePaths: ["src/**"], forbiddenPaths: ["evaluator/**"], excludedBundlePaths: ["evaluator"], appNetwork: true });
   try { await runtime.start({ runId: "run", attemptId: "attempt", ordinal: 1, seed: 1 }); const agent = specs.at(-1); assert.equal(agent.networkAliases.includes("app"), true); for (const mount of agent.mounts) assert.equal(existsSync(join(mount.source, "evaluator")), false); }
   finally { await runtime.cleanup({ runId: "run", attemptId: "attempt", ordinal: 1, seed: 1 }); removeTree(root); }
 });

@@ -130,9 +130,12 @@ function writeExclusive(path: string, content: Buffer): void {
   }
 }
 
+// Agent patches and event logs legitimately contain URL paths such as "/api/health", so only
+// well-known host filesystem roots (and Windows drive paths) count as a leaked host path.
+const HOST_ROOTS = "(?:Users|home|root|private|var|tmp|etc|opt|mnt|Volumes|proc|srv|usr\\/local)";
+const HOST_PATH = new RegExp(`(?:^|[\\s"'=(])(?:file:\\/\\/)?\\/${HOST_ROOTS}\\/[A-Za-z0-9._-]+(?:\\/[A-Za-z0-9._-]+)*`, "m");
 function absoluteHostPath(value: string): boolean {
-  return /(?:^|[\s"'=])(?:file:\/\/)?\/(?!\/)[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+/m.test(value)
-    || /(?:^|[\s"'=])[A-Za-z]:\\[^\s"']+/m.test(value);
+  return HOST_PATH.test(value) || /(?:^|[\s"'=])[A-Za-z]:\\[^\s"']+/m.test(value);
 }
 
 function assertReferenceClosure(values: string[], privatePaths: string[]): void {
