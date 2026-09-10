@@ -1,0 +1,8 @@
+{
+  "description": "After the API responds, the results are additionally narrowed on the `role` field instead of name/email, so \"ann\" and \"an\" both yield 0 rows. The critical stale-response-ignored, clear-input-restores-all and search-narrows-by-name-or-email tests fail (they wait for 2 / 7 rows that never appear); the loading test also fails (expects 7 rows). empty-state-after-no-match and the accessible-name check still pass.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

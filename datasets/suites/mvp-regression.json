@@ -1,18 +1,33 @@
 {
   "schemaVersion": 1,
   "suiteId": "mvp-regression",
-  "version": 1,
+  "version": 2,
   "type": "regression",
-  "manifestChecksum": "sha256:039ab652dee3057f4d998d99d8e853f90043c07aebb067724490282f61991963",
-  "publishedAt": "2026-09-10T11:21:09.805Z",
+  "manifestChecksum": "sha256:db32b44a9198e9da565ba79e9413620098b7cb21455fc9c42fa12918512cdb8b",
+  "publishedAt": "2026-09-10T11:56:39.769Z",
   "tasks": [
+    {
+      "taskId": "react-cart-quantity-021",
+      "version": 1,
+      "bundleChecksum": "sha256:f73f846b192c300903cce704d83de407643e2293b5ecd595f749d5205455458c"
+    },
     {
       "taskId": "react-orders-filter-017",
       "version": 1,
       "bundleChecksum": "sha256:25ee88416a99224342717b93dfb79822e1328cb48b7fb43e008b3d593973379e"
+    },
+    {
+      "taskId": "react-search-debounce-043",
+      "version": 1,
+      "bundleChecksum": "sha256:0001ea75a2f036ae2b921e957e17654b074fbce6712f89569a27854d2321ef2f"
+    },
+    {
+      "taskId": "react-todo-toggle-bug-032",
+      "version": 1,
+      "bundleChecksum": "sha256:e0944e95463c95a72f446841e98cdc1729da15ec13cd618cdb16bb604cceb2e5"
     }
   ],
   "extensions": {
-    "taskCount": 1
+    "taskCount": 4
   }
 }

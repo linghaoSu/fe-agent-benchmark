@@ -1,0 +1,8 @@
+{
+  "description": "The `if (!tracker.isCurrent(id)) return;` guard is removed, so every response is rendered in arrival order. Debounce and loading state are intact. Typing \"an\" (700ms) then \"ann\" (100ms) first renders the 2 \"ann\" rows, then the stale \"an\" response overwrites them with 7 rows; the critical stale-response-ignored test waits 900ms after seeing 2 rows and observes 7 (and \"andy\"), so it fails. clear-input, empty-state and loading tests still pass.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

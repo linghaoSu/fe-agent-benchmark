@@ -1,0 +1,12 @@
+{
+  "description": "Re-introduces the index/id confusion: the checkbox handler receives the row's index within the *visible* list and looks that index up in the full todos array. Under the 'active' filter the 2nd visible row (t3) toggles full-array index 1 (t2, already completed), so t3 stays visible and t2 becomes active. Trips critical toggle-by-id-under-active-filter (expects 3 rows, still sees 4). With filter 'all' indices coincide, so the other tests pass.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

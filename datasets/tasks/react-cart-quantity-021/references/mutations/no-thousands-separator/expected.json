@@ -1,0 +1,8 @@
+{
+  "description": "cart-total is rendered with `¥${(cents / 100).toFixed(2)}` instead of formatCents: two decimals are kept but the thousands separator is lost (¥1765.94). Every critical test uses totals below ¥1,000 and still passes; only the non-critical total-uses-thousands-separator test fails, so the task is solved with functional score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": { "criticalFunctionalTests": "passed" },
+    "scoreBelow": { "functional": 1 }
+  }
+}

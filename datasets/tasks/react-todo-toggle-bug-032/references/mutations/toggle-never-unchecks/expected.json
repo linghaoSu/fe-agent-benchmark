@@ -1,0 +1,12 @@
+{
+  "description": "Toggling sets completed: true unconditionally, so a second click can never restore an item to active. Every critical test only toggles items from active to completed and still passes; only the non-critical toggle-twice-restores test fails (row stays data-completed=true, count stays 3). Task counts as solved but functional score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

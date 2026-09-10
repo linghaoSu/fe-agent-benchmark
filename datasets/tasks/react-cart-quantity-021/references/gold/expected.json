@@ -1,0 +1,10 @@
+{
+  "description": "Reference implementation: useState list, pure src/cart.js for integer-cent math, clamping and formatting. Must be solved with every asserted quality dimension passing.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

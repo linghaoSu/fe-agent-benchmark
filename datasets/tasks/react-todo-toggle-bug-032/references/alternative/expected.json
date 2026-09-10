@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different correct implementation: useReducer over a normalized { byId, order, filter } store with derived selectors, split into FilterBar (real <label htmlFor> + <output> counter) and TodoList (<ul>/<li> rows, checkbox labelled by <label htmlFor>). Behaviourally equivalent to gold; must be solved with every quality dimension passing.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

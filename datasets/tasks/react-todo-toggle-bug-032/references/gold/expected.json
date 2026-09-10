@@ -1,0 +1,10 @@
+{
+  "description": "Reference implementation. Todos live in React state (never mutated), toggling is by id via a pure toggleTodo helper, remaining count = incomplete items, rows carry data-completed and controlled checkboxes. Must be solved with every quality dimension passing.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

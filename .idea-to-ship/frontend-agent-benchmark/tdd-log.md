@@ -635,3 +635,21 @@
   manifest, and emits a schema-valid Suite. `datasets/suites/mvp-regression.json`
   published with react-orders-filter-017. Gate V6.2-001 covers accept /
   duplicate / incomplete / republish.
+
+## 2026-09-10 — V6.3 dataset expansion (4 of 10 tasks), suite calibration matrix
+
+- `scripts/scaffold-task.mjs` clones the shared offline runtime (server,
+  scripts, lockfile, proxy fixtures, task.yaml skeleton) so every task shares
+  one pinned environment. Three sub agents authored, in parallel and from one
+  self-contained brief each: `react-cart-quantity-021` (feature: integer-cent
+  cart totals with a float-trap mutation), `react-todo-toggle-bug-032`
+  (bugfix: index-vs-id toggle, inverted count, stale completed attribute),
+  `react-search-debounce-043` (async: debounce + stale-response guard against
+  a fake API whose shorter queries resolve slower). Each ships README, starter,
+  smoke test, hidden spec (≥3 critical), gold + alternative with unit tests
+  and expectations, 5 one-defect mutations with expectations.
+- Real Docker: `eval baseline` then `eval calibrate` for each — 021, 032 and
+  043 all passed on the first run with mutationCaptureRate 1 (7/7 entries
+  each); no fixes were needed. `eval suite publish` v2 now lists 4 tasks;
+  `eval suite calibrate` (all-task matrix) added. Gates V6.3-001/002 check
+  every dataset bundle is complete, validated, ≥5 mutations, unique checksum.

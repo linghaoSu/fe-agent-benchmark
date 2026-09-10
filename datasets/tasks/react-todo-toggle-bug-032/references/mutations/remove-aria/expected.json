@@ -1,0 +1,15 @@
+{
+  "description": "Strips aria-label from the filter <select> and from every todo checkbox; none of them has a <label>, aria-labelledby or title, so all form controls are unlabeled. The three critical tests pass and the task is solved, but the non-critical filter-has-accessible-name test fails and the accessibility dimension (form-labels builtin check / axe select-name and label rules) fails with score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

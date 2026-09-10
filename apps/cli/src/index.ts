@@ -83,6 +83,7 @@ const usage = [
   "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--db <path>]",
   "pnpm eval compare --config <id>=<runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]",
   "pnpm eval suite publish --id <suiteId> --version <n> --type benchmark|regression --task <task-dir> [--task ...] --out <suite.json>",
+  "pnpm eval suite calibrate --suite <suite.json> --tasks-root <dir> [--out matrix.json] [--sandbox docker]",
 ].join(" | ");
 const documentKindDetection = [
   "validate selects kinds by the first top-level marker in this order:",
@@ -511,6 +512,42 @@ function publishSuite(arguments_: string[]): boolean {
   return true;
 }
 
+/**
+ * All-task calibration matrix: `eval suite calibrate --suite <suite.json> --tasks-root <dir> [--out matrix.json] [--sandbox docker]`
+ * runs `calibrate` for every task the Suite lists (bundle checksum must still match) and fails if any task fails.
+ */
+async function calibrateSuite(arguments_: string[]): Promise<boolean> {
+  const parsed = parseArguments(arguments_);
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--suite", "--tasks-root", "--out", "--sandbox"].includes(option))) return false;
+  if (typeof parsed.options["--suite"] !== "string" || typeof parsed.options["--tasks-root"] !== "string") return false;
+  const suite = JSON.parse(readFileSync(resolve(process.cwd(), parsed.options["--suite"]), "utf8")) as { suiteId: string; version: number; manifestChecksum: string; tasks: Array<{ taskId: string; version: number; bundleChecksum: string }> };
+  const root = mkdtempSync(join(tmpdir(), "fab-suite-calibrate-"));
+  try {
+    const cli = (...args: string[]) => {
+      const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS * 8 });
+      if (result.error) throw result.error;
+      return result;
+    };
+    const rows = suite.tasks.map((entry) => {
+      const bundle = resolve(process.cwd(), parsed.options["--tasks-root"] as string, entry.taskId);
+      const checksum = checksumTaskBundle(bundle);
+      if (!("bundleChecksum" in checksum) || checksum.bundleChecksum !== entry.bundleChecksum) {
+        return { taskId: entry.taskId, passed: false, reason: "bundle checksum differs from the published Suite" };
+      }
+      const out = join(root, `${entry.taskId}.json`);
+      const result = cli("calibrate", bundle, "--out", out, ...(parsed.options["--sandbox"] ? ["--sandbox", parsed.options["--sandbox"] as string] : []));
+      if (!existsSync(out)) return { taskId: entry.taskId, passed: false, reason: (result.stderr || result.stdout).slice(0, 400) };
+      const report = JSON.parse(readFileSync(out, "utf8")) as { passed: boolean; mutationCaptureRate: number; entries: Array<{ reference: string; passed: boolean; mismatches: string[] }> };
+      return { taskId: entry.taskId, passed: report.passed, mutationCaptureRate: report.mutationCaptureRate, references: report.entries.length, failures: report.entries.filter((e) => !e.passed).map((e) => ({ reference: e.reference, mismatches: e.mismatches })) };
+    });
+    const matrix = { schemaVersion: 1, suiteId: suite.suiteId, suiteVersion: suite.version, manifestChecksum: suite.manifestChecksum, createdAt: new Date().toISOString(), tasks: rows, passed: rows.length > 0 && rows.every((row) => row.passed) };
+    if (typeof parsed.options["--out"] === "string") writeFileSync(resolve(process.cwd(), parsed.options["--out"]), `${JSON.stringify(matrix, null, 2)}\n`);
+    console.log(JSON.stringify(matrix));
+    process.exitCode = matrix.passed ? 0 : 1;
+    return true;
+  } finally { unlockTree(root); rmSync(root, { recursive: true, force: true }); }
+}
+
 /** `reference:<name>` selects `<bundle>/references/<name>/src` (e.g. gold, alternative, mutations/drop-search-handler). */
 function referenceScenario(value: string): string | undefined {
   const match = /^reference:([A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)?)$/.exec(value);
@@ -897,6 +934,8 @@ try {
   } else if (command === "compare" && compareRuns([...(inputPath ? [inputPath] : []), ...extraArguments])) {
     // Handled above.
   } else if (command === "suite" && inputPath === "publish" && publishSuite(extraArguments)) {
+    // Handled above.
+  } else if (command === "suite" && inputPath === "calibrate" && await calibrateSuite(extraArguments)) {
     // Handled above.
   } else {
     printUsage();

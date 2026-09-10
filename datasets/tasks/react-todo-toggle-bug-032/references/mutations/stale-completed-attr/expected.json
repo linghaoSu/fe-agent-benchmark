@@ -1,0 +1,12 @@
+{
+  "description": "data-completed on each row is derived from the immutable initial dataset instead of current state, so it never changes after a toggle (the checkbox itself stays correct). Trips critical completed-filter-reflects-toggles (waits for the newly toggled row to report data-completed=true) and critical toggle-by-id-under-active-filter (checks data-completed after switching back to 'all'), plus non-critical toggle-twice-restores.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

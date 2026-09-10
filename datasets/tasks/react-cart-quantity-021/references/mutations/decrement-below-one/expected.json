@@ -1,0 +1,8 @@
+{
+  "description": "The quantity handler bypasses changeQuantity and only applies the 99 ceiling, so decrementing at 1 yields 0 and then -1. Critical decrement-floors-at-one fails (first row qty reads 0/-1 instead of 1 and the total keeps falling); increment, remove, cap and formatting tests still pass.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different correct implementation (useReducer with normalised byId/order state, Intl.NumberFormat formatting, <table> rows, CartRow/CartSummary components, visible button text instead of aria-label). Must be solved; layout legitimately differs from gold baselines so visual is not asserted.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

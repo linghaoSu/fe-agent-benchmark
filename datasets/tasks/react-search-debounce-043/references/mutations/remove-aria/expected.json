@@ -1,0 +1,9 @@
+{
+  "description": "The `aria-label` is stripped from the search input, which keeps only a placeholder and has no <label>, aria-labelledby or title. All three critical hidden tests and the loading test pass; the non-critical search-input-accessible-name test fails and the accessibility dimension (form-labels: placeholder-only input) fails, so accessibility score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": { "criticalFunctionalTests": "passed" },
+    "dimensions": { "accessibility": "failed" },
+    "scoreBelow": { "accessibility": 1 }
+  }
+}

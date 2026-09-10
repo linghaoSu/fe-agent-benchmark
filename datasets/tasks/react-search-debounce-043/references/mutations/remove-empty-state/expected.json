@@ -1,0 +1,8 @@
+{
+  "description": "The `<p data-testid=\"empty-state\">` branch is removed; when a completed search has no matches an empty table is rendered (result-count still shows 0). All three critical tests (stale-response-ignored, clear-input-restores-all, search-narrows-by-name-or-email) pass; only the non-critical empty-state-after-no-match test fails, so the task counts as solved with functional score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": { "criticalFunctionalTests": "passed" },
+    "scoreBelow": { "functional": 1 }
+  }
+}

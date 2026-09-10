@@ -1,0 +1,8 @@
+{
+  "description": "cart-total is computed by summing unitPrice/100 × quantity in floating-point yuan and flooring back to cents. The initial total (96694 分) survives, but after incrementing the mouse row the float sum is 996.8399999… which floors to 99683 → ¥996.83 instead of ¥996.84, so the critical increment-updates-total test never sees the expected total. remove / decrement / cap paths happen to land on exact floats and still pass.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

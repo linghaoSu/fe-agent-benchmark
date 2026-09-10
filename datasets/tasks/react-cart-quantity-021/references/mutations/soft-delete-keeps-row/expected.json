@@ -1,0 +1,8 @@
+{
+  "description": "The remove button sets the item quantity to 0 instead of removing the row (soft delete). Count and total drop correctly, but the row stays in the DOM, so the critical remove-updates-count-and-total test waits for 3 rows and fails; the non-critical empty-cart test also fails because the empty message never appears.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

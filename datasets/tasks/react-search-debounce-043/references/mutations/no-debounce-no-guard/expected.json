@@ -1,0 +1,8 @@
+{
+  "description": "Debounce delay set to 0 AND the stale-response guard removed: a request fires per keystroke and results flicker as out-of-order responses land. In the critical stale-response-ignored test the slow \"an\" response (700ms) overwrites the fast \"ann\" result (100ms), leaving 7 rows instead of 2. Also drops the loading flag after the stale response. Empty-state and clear-input tests still pass.",
+  "expect": {
+    "solved": false,
+    "gates": { "criticalFunctionalTests": "failed" },
+    "codes": ["FUNCTIONAL_CRITICAL_FAILED"]
+  }
+}

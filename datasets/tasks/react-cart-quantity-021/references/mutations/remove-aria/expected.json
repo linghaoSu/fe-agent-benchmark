@@ -1,0 +1,9 @@
+{
+  "description": "All three per-row buttons lose their aria-label and render an empty aria-hidden <i class=\"icon …\"> instead of a text glyph, leaving them with no accessible name at all. Every hidden functional test passes (clicks still work); the accessibility dimension must fail (axe button-name / builtin button-name) with its score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": { "criticalFunctionalTests": "passed" },
+    "dimensions": { "accessibility": "failed" },
+    "scoreBelow": { "accessibility": 1 }
+  }
+}

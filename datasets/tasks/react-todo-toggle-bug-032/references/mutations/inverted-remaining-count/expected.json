@@ -1,0 +1,12 @@
+{
+  "description": "remaining-count renders the number of *completed* todos (todos.length - remainingCount) instead of the number of incomplete ones, i.e. the starter's inverted counter. Shows 剩余 2 项 initially; trips critical remaining-count-after-toggles (expects 4 then 3 then 2, sees 2 then 3 then 4) and non-critical toggle-twice-restores (expects 4 after the second click, sees 2). toggle-by-id-under-active-filter passes coincidentally because after one toggle completed and incomplete counts are both 3.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}
