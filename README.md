@@ -52,6 +52,15 @@ pnpm eval run show <run-id> [--db <path>]
 pnpm eval run show --repair <run-id> [--db <path>]
 ```
 
+## React orders quick start
+
+```bash
+pnpm eval run create datasets/tasks/react-orders-filter-017 --seed 7 --sandbox docker
+pnpm eval run execute <run-id> --agent mock --mock-scenario react-orders-gold --sandbox docker
+pnpm eval run show <run-id>
+pnpm eval run export --audience requester <run-id>
+```
+
 `--repair` 从 SQLite 中的 canonical resolved input 原样重建缺失或损坏的
 `input.json`。默认数据库为 `runs/eval.sqlite`。
 Sandbox 默认为 `fake`；Docker Run 必须在 create 与 execute 时都选择

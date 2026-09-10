@@ -573,7 +573,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const state = this.activeState();
     const start = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/workspace", command: ["sh", "-lc", `(${command}) >/tmp/fab-start.log 2>&1 & echo $!`] });
     if (start.exitCode !== 0) return { log: start.stdout + start.stderr, ready: false };
-    const probe = `const d=Date.now()+${timeoutMs};(async()=>{for(;;){try{const r=await fetch('http://app:${port}/api/health');if(r.ok)process.exit(0)}catch{}if(Date.now()>d)process.exit(1);await new Promise(r=>setTimeout(r,200))}})()`;
+    const probe = `const d=Date.now()+${timeoutMs};(async()=>{for(;;){try{const r=await fetch('http://app:${port}/');if(r.status<500)process.exit(0)}catch{}if(Date.now()>d)process.exit(1);await new Promise(r=>setTimeout(r,200))}})()`;
     const ready = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/tmp", command: ["node", "-e", probe] });
     const log = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/tmp", command: ["sh", "-lc", "cat /tmp/fab-start.log 2>/dev/null || true"] });
     return { log: log.stdout + log.stderr, ready: ready.exitCode === 0 };

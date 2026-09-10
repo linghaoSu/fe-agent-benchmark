@@ -533,6 +533,29 @@
 - Docker verification could not run: `docker info` reaches an OrbStack socket
   but is denied by the managed execution sandbox (`operation not permitted`).
 
+## 2026-09-10 — V4.2b real React orders task bundle
+
+### Scope and decisions
+
+- Added `datasets/tasks/react-orders-filter-017`: an offline React 19 task
+  bundle with a pinned Alpine Node image, static package proxy, npm lockfile,
+  dependency cache snapshot, public starter, host-only gold source, and hidden
+  Playwright functional cases.
+- The no-bundler build writes browser ESM wrappers around the vendored React,
+  React DOM, and Scheduler CommonJS development builds; no esbuild or extra
+  Alpine-specific package is needed.
+- `references/` is now omitted from Docker's public Agent bundle. The mock
+  adapter receives the host gold directory only for `react-orders-gold` and
+  emits ordinary allowed `write_file` requests; `react-orders-noop` changes
+  nothing.
+
+### Verification
+
+- `pnpm eval validate datasets/tasks/react-orders-filter-017/task.yaml` and
+  `pnpm eval checksum datasets/tasks/react-orders-filter-017` passed.
+- Focused V4.2b static gates passed; the real Docker gold/noop gates skipped
+  cleanly because the managed shell cannot access OrbStack.
+
 ### V4.1 coverage follow-up
 
 - Added serialized unit coverage for the full integrity/build aggregation truth

@@ -59,7 +59,7 @@ const usage = [
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
@@ -352,7 +352,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
-      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write"].includes(parsed.options["--mock-scenario"] as string))
+      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop"].includes(parsed.options["--mock-scenario"] as string))
     || (parsed.options["--evaluators"] !== undefined && parsed.options["--evaluators"] !== "noop" && parsed.options["--evaluators"] !== "pipeline")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
@@ -400,7 +400,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           bundlePath: task.path,
           writablePaths: resolved.permissions?.writablePaths ?? [],
           forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [],
-          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], excludedBundlePaths: resolved.evaluation?.hiddenBundle ? [resolved.evaluation.hiddenBundle.split("/")[0]!] : [],
+          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], excludedBundlePaths: [...(resolved.evaluation?.hiddenBundle ? [resolved.evaluation.hiddenBundle.split("/")[0]!] : []), "references"],
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
           services: resolved.services,
@@ -415,7 +415,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             args: [
               new URL("../../../packages/adapter-mock/dist/index.js", import.meta.url).pathname,
               ...(typeof parsed.options["--mock-scenario"] === "string"
-                ? [`--${parsed.options["--mock-scenario"]}`]
+                ? [`--${parsed.options["--mock-scenario"]}`, ...(parsed.options["--mock-scenario"] === "react-orders-gold" ? [join(task.path, "references", "gold")] : [])]
                 : sandbox ? ["--docker-workspace"] : []),
             ],
           },

@@ -111,7 +111,8 @@
   - `pnpm install`: passed, exit 0.
   - `pnpm -r build`: passed, exit 0.
   - `node --test tests/gate/*.test.mjs`: passed, 10/10.
-  - `pnpm check:generated`: passed, exit 0.
+- `pnpm check:generated`: passed, exit 0.
+
 - Production result: Result and Task validation share schema selection and
   stable errors in `packages/contracts`; checksum uses sorted relative paths and
   per-file SHA-256 without following symlinks; generated Task/Result types are
@@ -482,3 +483,30 @@
   scores.functional=0.5, scores.build=1.
 - Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 112/112,
   0 skipped; build and check:generated exit 0. V4.2a complete.
+
+- 2026-09-10 V4.2b red → green: `v4-react-orders.test.mjs` first failed with
+  a missing task bundle, then passed static validation/checksum/proxy-integrity
+  coverage after the bundle and mock scenarios were added. The real-Docker
+  cases skip cleanly here because OrbStack's socket is inaccessible.
+- Follow-up verification (2026-09-10, Claude, Docker reachable): the gold
+  react-orders run reached Build passed but then failed three ways. (1) The
+  app readiness probe hardcoded `/api/health` (a node-min detail) so a plain
+  static server never became ready → START_TIMEOUT; the probe now accepts any
+  non-5xx response on `/`. (2) The hidden spec's `rows` helper was declared
+  `async`, so `rows(page).count()` was called on a Promise and every critical
+  test threw (0/3), and multi-row `locator.textContent()` would have violated
+  strict mode — fixed to a sync locator plus `allTextContents()`. Verified the
+  gold app itself rendered correctly in the browser before touching the spec.
+  (3) With every test failing, unbounded `waitForFunction` waits (30s default
+  × 5) exceeded the browser exec timeout and the noop gate timed out; the
+  runner now sets 5s action / 15s navigation defaults.
+- Real-Docker end-to-end on datasets/tasks/react-orders-filter-017:
+  `react-orders-gold` → INTEGRITY_PASSED, BUILD_PASSED (npm ci offline through
+  the proxy, 3 packages), START_PASSED, FUNCTIONAL_PASSED 5/5 → valid=true
+  solved=true scores.build=1 scores.functional=1, requester export succeeds;
+  `react-orders-noop` → FUNCTIONAL_CRITICAL_FAILED → solved=false,
+  scores.functional=0. This is the first complete evaluated Run of the
+  benchmark's reference task (the CODEX_TASK.md acceptance flow).
+- Final: `node --test --test-concurrency=1 tests/gate/*.test.mjs` → 116/116,
+  0 skipped; build, check:generated, task validate/checksum exit 0. V4 stage
+  complete.

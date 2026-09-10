@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 
 import {
   ADAPTER_PROTOCOL_VERSION,
@@ -12,6 +13,22 @@ const attemptId = process.env.FAB_ATTEMPT_ID;
 if (!runId || !attemptId) throw new Error("FAB_RUN_ID and FAB_ATTEMPT_ID are required");
 
 const codec = new FrameCodec();
+function goldScenario() {
+  const root = process.argv[3];
+  if (!root) throw new Error("react-orders-gold requires a gold source directory");
+  const files = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? files(path) : [path];
+  });
+  return {
+    toolRequests: files(join(root, "src")).map((file, index) => ({
+      toolCallId: `react-orders-gold-${index}`,
+      tool: "write_file",
+      arguments: { path: join("src", relative(join(root, "src"), file)), content: readFileSync(file, "utf8") },
+    })),
+    patch: "",
+  };
+}
 const scenario = process.argv[2]
   ? ((process.argv[2] === "--docker-workspace" ? {
       toolRequests: [
@@ -39,7 +56,9 @@ const scenario = process.argv[2]
       toolRequests: [{ toolCallId: "functional-break", tool: "write_file", arguments: { path: "src/index.mjs", content: "import { createServer } from 'node:http';\nexport const value = 2;\nconst server=createServer((q,s)=>{if(q.url==='/api/health'){s.setHeader('content-type','application/json');return s.end(JSON.stringify({ok:true}));}s.setHeader('content-type','text/html');s.end('<h1 data-testid=\"title\">wrong</h1>');});\nif(process.argv[1]&&new URL(`file://${process.argv[1]}`).href===import.meta.url)server.listen(process.env.PORT||3000);\n" } }], patch: "",
     } : process.argv[2] === "--forbidden-write" ? {
       toolRequests: [{ toolCallId: "forbidden-write", tool: "write_file", arguments: { path: "scripts/check.mjs", content: "process.exit(1);\n" } }], patch: "diff --git a/scripts/check.mjs b/scripts/check.mjs\n--- a/scripts/check.mjs\n+++ b/scripts/check.mjs\n@@ -1 +1 @@\n-process.exit(0);\n+process.exit(1);\n",
-    } : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {
+    } : process.argv[2] === "--react-orders-gold" ? goldScenario()
+    : process.argv[2] === "--react-orders-noop" ? { toolRequests: [], patch: "" }
+    : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {
       toolRequests?: Array<{ toolCallId: string; tool: string; arguments: Record<string, unknown> }>;
       reportEnv?: boolean;
       reportCredentialEvent?: boolean;
