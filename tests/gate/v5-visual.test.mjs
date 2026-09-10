@@ -130,3 +130,12 @@ test("GATE-V5-VISUAL-009: generated script configures the browser deterministica
   await new VisualEvaluator({ port: 4321, viewports, locale: "de-DE", timezone: "Europe/Berlin", baselines: {}, run: async (s) => { script = s; return { exitCode: 0, stdout: "{\"shots\":[]}", stderr: "" }; } }).execute(context());
   for (const needle of ["require('playwright-core')", "chromium.launch({headless:true})", "http://app:'+cfg.port+'/'", "\"port\":4321", "\"locale\":\"de-DE\"", "\"timezone\":\"Europe/Berlin\"", "deviceScaleFactor:1", "reducedMotion:'reduce'", "waitUntil:'networkidle'", "setDefaultNavigationTimeout(15000)", "setDefaultTimeout(5000)", "animation:none!important;transition:none!important;caret-color:transparent!important", "document.fonts.ready", "fullPage:true,type:'png'", "[data-testid]", "getBoundingClientRect", `"maxBytes":${4 * 1024 * 1024}`]) assert.ok(script.includes(needle), `script missing ${needle}`);
 });
+
+test("GATE-V5-VISUAL-010: decoder refuses images above the pixel budget before inflating", async () => {
+  const { decodePng } = await import(visual);
+  // Craft an IHDR claiming 20000x20000 with a tiny IDAT; the decoder must reject on dimensions, not allocate.
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const body = Buffer.concat([Buffer.from(type), data]); const crc = Buffer.alloc(4); return Buffer.concat([len, body, crc]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(20000, 0); ihdr.writeUInt32BE(20000, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const png = Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), chunk("IHDR", ihdr), chunk("IDAT", Buffer.from([0x78, 0x9c, 0x03, 0x00])), chunk("IEND", Buffer.alloc(0))]);
+  assert.throws(() => decodePng(png), /pixel decode limit/);
+});

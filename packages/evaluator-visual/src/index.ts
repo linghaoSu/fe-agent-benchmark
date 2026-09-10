@@ -17,6 +17,11 @@ export interface VisualEvaluatorInput {
 
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const MAX_PNG_BYTES = 4 * 1024 * 1024;
+// A full-page screenshot's height is page-controlled; cap decoded pixels and total transport so a tall
+// uniform page cannot inflate a small PNG into hundreds of MiB on the host or overflow the exec buffer.
+const MAX_PNG_PIXELS = 12_000_000;
+const MAX_PAGE_HEIGHT_PX = 8_000;
+const MAX_TOTAL_PNG_BYTES = 10 * 1024 * 1024;
 const LOG_LIMIT = 65536;
 
 /** Minimal pure-Node PNG decoder: 8-bit RGB (2) / RGBA (6), non-interlaced, all 5 filter types. Throws on anything else. */
@@ -36,8 +41,9 @@ export function decodePng(bytes: Uint8Array): DecodedPng {
   if (bitDepth !== 8) throw new Error(`PNG: unsupported bit depth ${bitDepth}`);
   if (colorType !== 2 && colorType !== 6) throw new Error(`PNG: unsupported colour type ${colorType}`);
   if (interlace !== 0) throw new Error("PNG: interlaced images are unsupported");
+  if (width * height > MAX_PNG_PIXELS) throw new Error(`PNG: ${width}x${height} exceeds the ${MAX_PNG_PIXELS}-pixel decode limit`);
   const bpp = colorType === 6 ? 4 : 3; const stride = width * bpp;
-  const raw = inflateSync(Buffer.concat(idat.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength))));
+  const raw = inflateSync(Buffer.concat(idat.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength))), { maxOutputLength: (stride + 1) * height });
   if (raw.length < (stride + 1) * height) throw new Error("PNG: inflated data too short");
   const rgba = new Uint8Array(width * height * 4); const prev = new Uint8Array(stride); const cur = new Uint8Array(stride);
   for (let y = 0; y < height; y++) {
@@ -80,14 +86,14 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
 export class VisualEvaluator implements EvaluatorPlugin {
   constructor(private readonly input: VisualEvaluatorInput) {}
-  metadata() { return { id: "visual", version: "1", stage: "visual", prerequisites: ["start"], deterministic: true }; }
+  metadata() { return { id: "visual", version: "1", stage: "visual", prerequisites: ["start"], deterministic: true, informational: true }; }
   async prepare() {}
   async cleanup() {}
 
   buildScript(): string {
     const { port, viewports, locale, timezone } = this.input;
-    const cfg = JSON.stringify({ port, viewports, locale: locale ?? "en-US", timezone: timezone ?? "UTC", maxBytes: MAX_PNG_BYTES });
-    return `const cfg=${cfg};(async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const shots=[];for(const vp of cfg.viewports){const ctx=await b.newContext({viewport:{width:vp.width,height:vp.height},deviceScaleFactor:1,locale:cfg.locale,timezoneId:cfg.timezone,reducedMotion:'reduce'});const p=await ctx.newPage();p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);let png=Buffer.alloc(0);let geometry=[];try{await p.goto('http://app:'+cfg.port+'/',{waitUntil:'networkidle'});await p.addStyleTag({content:'*{animation:none!important;transition:none!important;caret-color:transparent!important}'});await p.evaluate(()=>document.fonts.ready);png=await p.screenshot({fullPage:true,type:'png'});geometry=await p.evaluate(()=>[...document.querySelectorAll('[data-testid]')].map(e=>{const r=e.getBoundingClientRect().toJSON();const o={testId:e.dataset.testid};for(const k of Object.keys(r))o[k]=Math.round(r[k]);return o}))}catch(e){process.stderr.write('viewport '+vp.name+' failed: '+(e&&e.message||e)+'\\n')}const oversized=png.length>cfg.maxBytes;shots.push({viewport:vp.name,width:vp.width,height:vp.height,pngBase64:oversized?'':png.toString('base64'),geometry,oversized});await ctx.close()}await b.close();process.stdout.write(JSON.stringify({shots})+'\\n')})().catch(e=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
+    const cfg = JSON.stringify({ port, viewports, locale: locale ?? "en-US", timezone: timezone ?? "UTC", maxBytes: MAX_PNG_BYTES, maxTotalBytes: MAX_TOTAL_PNG_BYTES, maxHeight: MAX_PAGE_HEIGHT_PX });
+    return `const cfg=${cfg};(async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const shots=[];let total=0;for(const vp of cfg.viewports){const ctx=await b.newContext({viewport:{width:vp.width,height:vp.height},deviceScaleFactor:1,locale:cfg.locale,timezoneId:cfg.timezone,reducedMotion:'reduce'});await ctx.addInitScript(()=>{const fixed=1735689600000;Date.now=()=>fixed;const D=Date;globalThis.Date=class extends D{constructor(...a){super(...(a.length?a:[fixed]))}static now(){return fixed}};let seed=42;Math.random=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x80000000}});const p=await ctx.newPage();p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);let png=Buffer.alloc(0);let geometry=[];try{await p.goto('http://app:'+cfg.port+'/',{waitUntil:'networkidle'});await p.addStyleTag({content:'*{animation:none!important;transition:none!important;caret-color:transparent!important}'});await p.evaluate(()=>document.fonts.ready);const docH=await p.evaluate(()=>document.documentElement.scrollHeight);png=docH>cfg.maxHeight?await p.screenshot({type:'png',clip:{x:0,y:0,width:vp.width,height:cfg.maxHeight}}):await p.screenshot({fullPage:true,type:'png'});geometry=await p.evaluate(()=>[...document.querySelectorAll('[data-testid]')].map(e=>{const r=e.getBoundingClientRect().toJSON();const o={testId:e.dataset.testid};for(const k of Object.keys(r))o[k]=Math.round(r[k]);return o}))}catch(e){process.stderr.write('viewport '+vp.name+' failed: '+(e&&e.message||e)+'\\n')}const oversized=png.length>cfg.maxBytes||(total+png.length)>cfg.maxTotalBytes;if(!oversized)total+=png.length;shots.push({viewport:vp.name,width:vp.width,height:vp.height,pngBase64:oversized?'':png.toString('base64'),geometry,oversized});await ctx.close()}await b.close();process.stdout.write(JSON.stringify({shots})+'\\n')})().catch(e=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
   }
 
   async execute(context: EvaluatorContext): Promise<FrontendAgentEvaluatorResult> {

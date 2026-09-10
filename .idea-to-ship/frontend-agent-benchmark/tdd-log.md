@@ -538,3 +538,25 @@
   frozen snapshot is `a-w`; it now restores write bits before `rmSync`.
 - `tests/gate/v5-quality.test.mjs`: baseline PNG shape, hidden baselines absent
   from every Agent mount, and the two real-Docker scenarios — 4/4.
+- Adversarial review (Codex gpt-5.6-sol, `review-mtv7fdmk-izysop`) on a3e1903
+  returned 6 findings; triage: fix 1–5, minimal mitigation for 6.
+  (1) PNG decoder now rejects > 12 M pixels before inflating and bounds
+  `inflateSync` output; capture clips pages taller than 8000 px and enforces a
+  10 MiB total transport budget so three viewports fit the exec buffer.
+  (2) Responsive measurement intrinsics (`querySelectorAll`,
+  `getBoundingClientRect`, `getComputedStyle`, `scrollWidth`/`innerWidth`
+  getters) are captured in an init script before any page code runs and bound
+  to a non-writable, randomly named function — page scripts cannot redefine
+  what the evaluator calls. (3) When axe is configured and does not run
+  (strict CSP, tampered `window.axe`) the result is `A11Y_MEASUREMENT_FAILED`,
+  never a builtin-only pass. (4) `EvaluatorPlugin.metadata().informational`;
+  the pipeline downgrades informational crashes to `failed` /
+  `<ID>_MEASUREMENT_FAILED` (SNAPSHOT_DIGEST_CHANGED stays terminal), so
+  quality evaluators can never turn a Run into `evaluator_error`.
+  (5) `eval baseline` reads the final succeeded Attempt and writes all
+  viewports or none. (6) Screenshot contexts pin `Date`/`Date.now` and
+  `Math.random` via init script; full determinism policy deferred to the V5.2
+  repeat comparator. Regenerated baselines are byte-identical across two
+  consecutive runs.
+- New gates: V4.1-002b (informational downgrade), V5-A11Y-009 (axe blocked),
+  V5-VISUAL-010 (pixel budget). All V5 unit + real-Docker quality gates green.

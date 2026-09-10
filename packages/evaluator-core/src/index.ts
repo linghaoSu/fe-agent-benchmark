@@ -9,7 +9,8 @@ export interface EvaluatorContext {
   stageArtifact(input: { logicalType: string; mime: string; relativePath: string; content: string; producerRef: string }): string;
 }
 export interface EvaluatorPlugin {
-  metadata(): { id: string; version: string; stage: EvaluatorStage; prerequisites?: string[]; deterministic: boolean };
+  /** `informational` evaluators feed the quality vector only; their crashes become a failed dimension, never a terminal evaluator_error. */
+  metadata(): { id: string; version: string; stage: EvaluatorStage; prerequisites?: string[]; deterministic: boolean; informational?: boolean };
   prepare(context: EvaluatorContext): Promise<void>;
   execute(context: EvaluatorContext): Promise<FrontendAgentEvaluatorResult>;
   cleanup(context: EvaluatorContext): Promise<void>;
@@ -42,6 +43,10 @@ export class EvaluatorPipeline {
       finally { try { await plugin.cleanup(context); } catch {} }
       if (!validateContractDocument(result, "evaluator-result").valid || result.attemptId !== context.attemptId) result = errorResult(plugin, context, "EVALUATOR_RESULT_INVALID", "Evaluator returned an invalid result");
       if (result.evaluatedSnapshotDigest !== context.snapshotDigest) result = errorResult(plugin, context, "SNAPSHOT_DIGEST_CHANGED", "Evaluator reported a different snapshot digest");
+      // A snapshot digest change is a security signal and stays terminal even for informational evaluators.
+      if (result.status === "error" && meta.informational && result.outcome.privateCode !== "SNAPSHOT_DIGEST_CHANGED") {
+        result = { ...result, status: "failed", outcome: { ...result.outcome, passed: false, privateCode: `${meta.id.toUpperCase()}_MEASUREMENT_FAILED`, summary: `Informational evaluator failed: ${result.outcome.summary ?? result.outcome.privateCode}`.slice(0, 500), score: 0 } };
+      }
       const relativePath = `evaluator-results/${meta.id}.json`;
       result = { ...result, evidenceRefs: [...new Set([...result.evidenceRefs, relativePath])] };
       context.stageArtifact({ logicalType: "evaluator_result", mime: "application/json", relativePath, content: JSON.stringify(result), producerRef: result.producerRef });

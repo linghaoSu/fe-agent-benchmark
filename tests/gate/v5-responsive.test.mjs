@@ -22,7 +22,7 @@ async function execute(measurementsOrStdout, exitCode = 0) {
 test("GATE-V5-001: metadata and generated script target the app at every viewport", async () => {
   const { ResponsiveEvaluator } = await import(responsive);
   const evaluator = new ResponsiveEvaluator({ port: 3000, viewports, run: async () => ({ exitCode: 0, stdout: "", stderr: "" }) });
-  assert.deepEqual(evaluator.metadata(), { id: "responsive", version: "1", stage: "responsive", prerequisites: ["start"], deterministic: true });
+  assert.deepEqual(evaluator.metadata(), { id: "responsive", version: "1", stage: "responsive", prerequisites: ["start"], deterministic: true, informational: true });
   const { scripts } = await execute(viewports.map((v) => measurement(v)));
   assert.equal(scripts.length, 1); assert.match(scripts[0], /require\('playwright-core'\)/); assert.match(scripts[0], /http:\/\/app:3000\//); assert.match(scripts[0], /networkidle/); assert.match(scripts[0], /"mobile"/); assert.match(scripts[0], /deviceScaleFactor:1/);
 });

@@ -6,7 +6,7 @@ export type Viewport = { name: string; width: number; height: number };
 export type AxeViolation = { id: string; impact: string; nodes: number; selectors: string[] };
 export type AxeSummary = { violations: AxeViolation[]; passes: number };
 export type BuiltinCheck = { id: string; passed: boolean; failing: number; selectors: string[] };
-export type ViewportResult = { viewport: string; axe?: AxeSummary; builtin: BuiltinCheck[] };
+export type ViewportResult = { viewport: string; axe?: AxeSummary; axeError?: string; builtin: BuiltinCheck[] };
 export type A11yScriptResult = { results: ViewportResult[] };
 export type A11yScore = { score: number; passed: boolean; perViewport: Array<{ viewport: string; score: number; seriousOrCritical: number; checks: number }> };
 
@@ -26,6 +26,7 @@ export function sanitizeA11yResult(value: unknown): A11yScriptResult | undefined
     const builtin: BuiltinCheck[] = (entry.builtin as Array<Record<string, unknown>>).filter((b) => b && typeof b.id === "string").map((b) => ({ id: str(b.id, 80), passed: b.passed === true, failing: count(b.failing), selectors: selectors(b.selectors) }));
     const out: ViewportResult = { viewport: str(entry.viewport, 80), builtin };
     const axe = entry.axe as Record<string, unknown> | undefined;
+    if (typeof entry.axeError === "string") out.axeError = entry.axeError.slice(0, 300);
     if (axe && typeof axe === "object") out.axe = { passes: count(axe.passes), violations: (Array.isArray(axe.violations) ? axe.violations as Array<Record<string, unknown>> : []).filter((v) => v && typeof v.id === "string").map((v) => ({ id: str(v.id, 80), impact: str(v.impact, 20), nodes: count(v.nodes), selectors: selectors(v.selectors) })) };
     results.push(out);
   }
@@ -75,12 +76,12 @@ const AXE_SOURCE = `(async () => { const r = await axe.run(document, { runOnly: 
 
 export class A11yEvaluator implements EvaluatorPlugin {
   constructor(private readonly input: { port: number; viewports: Viewport[]; axeSource?: string; run(script: string): Promise<{ exitCode: number; stdout: string; stderr: string }> }) {}
-  metadata() { return { id: "accessibility", version: "1", stage: "accessibility", prerequisites: ["start"], deterministic: true }; }
+  metadata() { return { id: "accessibility", version: "1", stage: "accessibility", prerequisites: ["start"], deterministic: true, informational: true }; }
   async prepare() {}
   async cleanup() {}
   buildScript(): string {
     const viewports = this.input.viewports.map((v) => ({ name: String(v.name), width: Math.max(1, Math.floor(v.width)), height: Math.max(1, Math.floor(v.height)) }));
-    return `const axeSource=${JSON.stringify(this.input.axeSource ?? null)};const viewports=${JSON.stringify(viewports)};(async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const results=[];try{for(const vp of viewports){const p=await b.newPage({viewport:{width:vp.width,height:vp.height}});p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);await p.goto('http://app:${this.input.port}/',{waitUntil:'networkidle'});const entry={viewport:vp.name,builtin:[]};if(axeSource){try{await p.addScriptTag({content:axeSource});entry.axe=await p.evaluate(${JSON.stringify(AXE_SOURCE)})}catch(e){process.stderr.write('axe failed: '+String(e&&e.message||e)+'\\n')}}entry.builtin=await p.evaluate(${JSON.stringify(BUILTIN_SOURCE)});results.push(entry);await p.close()}}finally{await b.close()}process.stdout.write(JSON.stringify({results}))})().catch((e)=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
+    return `const axeSource=${JSON.stringify(this.input.axeSource ?? null)};const viewports=${JSON.stringify(viewports)};(async()=>{const {chromium}=require('playwright-core');const b=await chromium.launch({headless:true});const results=[];try{for(const vp of viewports){const p=await b.newPage({viewport:{width:vp.width,height:vp.height}});p.setDefaultTimeout(5000);p.setDefaultNavigationTimeout(15000);await p.goto('http://app:${this.input.port}/',{waitUntil:'networkidle'});const entry={viewport:vp.name,builtin:[]};if(axeSource){try{await p.addScriptTag({content:axeSource});entry.axe=await p.evaluate(${JSON.stringify(AXE_SOURCE)});if(!entry.axe||typeof entry.axe.passes!=='number')throw new Error('axe returned no result')}catch(e){entry.axeError=String(e&&e.message||e).slice(0,300);process.stderr.write('axe failed: '+entry.axeError+'\\n')}}entry.builtin=await p.evaluate(${JSON.stringify(BUILTIN_SOURCE)});results.push(entry);await p.close()}}finally{await b.close()}process.stdout.write(JSON.stringify({results}))})().catch((e)=>{process.stderr.write(String(e&&e.stack||e));process.exit(1)});`;
   }
   async execute(context: EvaluatorContext): Promise<FrontendAgentEvaluatorResult> {
     const producerRef = `attempt:${context.attemptId}:evaluator:accessibility`;
@@ -97,6 +98,9 @@ export class A11yEvaluator implements EvaluatorPlugin {
     evidenceRefs.push(context.stageArtifact({ logicalType: "playwright_log", mime: "text/plain", relativePath: "a11y/playwright.log", content: `${raw.stdout.slice(0, 32768)}${raw.stderr.slice(0, 32768)}`, producerRef }));
     const base = { schemaVersion: 1 as const, evaluatorResultId: randomUUID(), evaluatorId: "accessibility", evaluatorVersion: "1", attemptId: context.attemptId, stage: "accessibility", prerequisites: ["start"], deterministic: true, evaluatedSnapshotDigest: context.snapshotDigest, producerRef, evidenceRefs: [...new Set(evidenceRefs)] };
     if (!scored) return { ...base, status: "failed", outcome: { passed: false, privateCode: "A11Y_MEASUREMENT_FAILED", summary: "Accessibility measurement did not produce a usable result", score: 0 } };
+    // When axe was requested it must actually run; a page (strict CSP, tampered window.axe) that blocks it cannot fall through to the smaller builtin rule set and pass.
+    const axeBlocked = this.input.axeSource ? parsed!.results.filter((vp) => !vp.axe) : [];
+    if (axeBlocked.length) return { ...base, status: "failed", outcome: { passed: false, privateCode: "A11Y_MEASUREMENT_FAILED", summary: `axe-core did not run for ${axeBlocked.map((vp) => vp.viewport).join(", ")}: ${axeBlocked[0]!.axeError ?? "no result"}`.slice(0, 500), score: 0 } };
     const violations = scored.perViewport.reduce((a, b) => a + b.seriousOrCritical, 0);
     return { ...base, status: scored.passed ? "passed" : "failed", outcome: { passed: scored.passed, privateCode: scored.passed ? "A11Y_PASSED" : "A11Y_VIOLATIONS", summary: scored.passed ? "No serious or critical accessibility violations" : `${violations} serious/critical accessibility violation(s) across ${scored.perViewport.length} viewport(s)`, score: scored.score } };
   }

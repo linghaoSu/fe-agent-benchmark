@@ -170,22 +170,29 @@ async function writeBaselines(bundlePath: string, arguments_: string[]): Promise
     };
     const created = cli("run", "create", bundle, "--seed", "1", "--sandbox", sandbox, "--db", databasePath) as { runId: string };
     cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
-    const shown = cli("run", "show", created.runId, "--db", databasePath) as { run: { status: string }; artifacts: Array<{ relativePath: string }> };
+    const shown = cli("run", "show", created.runId, "--db", databasePath) as { run: { status: string }; attempts: Array<{ ordinal: number; lifecycleStatus: string }>; artifacts: Array<{ relativePath: string }> };
     if (shown.run.status !== "COMPLETED") throw new Error(`Baseline Run ended ${shown.run.status}`);
-    const attemptDirectory = join(root, created.runId, "attempts", "1");
+    // A retried Run finalizes on its last Attempt; artifacts in `run show` belong to that Attempt.
+    const finalAttempt = [...shown.attempts].sort((left, right) => right.ordinal - left.ordinal)[0];
+    if (!finalAttempt || finalAttempt.lifecycleStatus !== "SUCCEEDED") throw new Error("Baseline Run has no succeeded Attempt");
+    const attemptDirectory = join(root, created.runId, "attempts", String(finalAttempt.ordinal));
+    const pending: Array<{ viewport: string; bytes: Buffer }> = [];
+    for (const { name } of metadata.viewports) {
+      const path = join(attemptDirectory, "screenshots", `${name}.png.json`);
+      if (!existsSync(path)) throw new Error(`Baseline Run produced no screenshot for viewport ${name}`);
+      const shot = JSON.parse(readFileSync(path, "utf8")) as { pngBase64?: string; oversized?: boolean };
+      if (!shot.pngBase64) throw new Error(`Screenshot for viewport ${name} is ${shot.oversized ? "oversized" : "empty"}; baselines were not written`);
+      pending.push({ viewport: name, bytes: Buffer.from(shot.pngBase64, "base64") });
+    }
+    if (!pending.length) throw new Error("Task declares no viewports; nothing to baseline");
+    // Write only after every viewport succeeded so the bundle never holds a mixed old/new baseline set.
     const target = join(bundle, metadata.hiddenBundle, "baselines");
     mkdirSync(target, { recursive: true });
-    const written: Array<{ viewport: string; sha256: string }> = [];
-    for (const artifact of shown.artifacts.filter(({ relativePath }) => /^screenshots\/.+\.png\.json$/.test(relativePath))) {
-      const shot = JSON.parse(readFileSync(join(attemptDirectory, artifact.relativePath), "utf8")) as { pngBase64?: string; sha256?: string };
-      if (!shot.pngBase64) continue;
-      const viewport = artifact.relativePath.slice("screenshots/".length, -".png.json".length);
-      const bytes = Buffer.from(shot.pngBase64, "base64");
+    const written = pending.map(({ viewport, bytes }) => {
       writeFileSync(join(target, `${viewport}.png`), bytes);
-      written.push({ viewport, sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}` });
-    }
-    console.log(JSON.stringify({ runId: created.runId, scenario, baselines: written }));
-    process.exitCode = written.length ? 0 : 1;
+      return { viewport, sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}` };
+    });
+    console.log(JSON.stringify({ runId: created.runId, attempt: finalAttempt.ordinal, scenario, baselines: written }));
     return true;
   } finally {
     // Frozen snapshots are chmod a-w; restore write bits before removing the throwaway root.

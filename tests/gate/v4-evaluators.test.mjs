@@ -50,6 +50,14 @@ test("GATE-V4.1-002: pipeline skips dependents and converts invalid output to ev
   const result = await new EvaluatorPipeline([bad, dependent]).run(ctx);
   assert.equal(result.results[0].outcome.privateCode, "EVALUATOR_RESULT_INVALID"); assert.equal(result.results[1].status, "skipped"); assert.deepEqual(ctx.staged, ["evaluator-results/integrity.json", "evaluator-results/build.json"]);
 });
+test("GATE-V4.1-002b: informational evaluator crashes degrade to a failed dimension, never evaluator error", async () => {
+  const { EvaluatorPipeline } = await import(core); const ctx = context();
+  const crashing = { metadata: () => ({ id: "visual", version: "1", stage: "visual", deterministic: true, informational: true }), prepare: async () => {}, cleanup: async () => {}, execute: async () => { throw new Error("browser exploded"); } };
+  const gating = { metadata: () => ({ id: "functional", version: "1", stage: "functional", deterministic: true }), prepare: async () => {}, cleanup: async () => {}, execute: async () => { throw new Error("browser exploded"); } };
+  const { results } = await new EvaluatorPipeline([crashing, gating]).run(ctx);
+  assert.equal(results[0].status, "failed"); assert.equal(results[0].outcome.privateCode, "VISUAL_MEASUREMENT_FAILED"); assert.equal(results[0].outcome.score, 0);
+  assert.equal(results[1].status, "error"); assert.equal(results[1].outcome.privateCode, "EVALUATOR_CRASH");
+});
 test("GATE-V4.1-003: build stops at the first failed configured command", async () => {
   const { BuildEvaluator } = await import(build); const ctx = context(); const calls = [];
   const evaluator = new BuildEvaluator({ commands: { install: "install", typecheck: "typecheck", lint: "lint" }, run: async (command) => { calls.push(command); return { exitCode: command === "typecheck" ? 1 : 0, stdout: "", stderr: "" }; } });

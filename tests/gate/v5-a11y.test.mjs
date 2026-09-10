@@ -75,3 +75,14 @@ test("GATE-V5-A11Y-008: vendored axe-core matches the recorded sha256", () => {
   assert.equal(createHash("sha256").update(readFileSync(axeFile)).digest("hex"), recorded);
   assert.match(readFileSync(axeReadme, "utf8"), /axe-core@4\.10\.3/);
 });
+
+test("GATE-V5-A11Y-009: a page that blocks axe cannot pass on builtin rules alone", async () => {
+  const blocked = clean(); for (const vp of blocked.results) { delete vp.axe; vp.axeError = "Refused to execute inline script (CSP)"; }
+  const { result } = await evaluate(JSON.stringify(blocked), { axeSource: "window.axe={}" });
+  assert.equal(result.status, "failed"); assert.equal(result.outcome.privateCode, "A11Y_MEASUREMENT_FAILED"); assert.equal(result.outcome.score, 0);
+  assert.match(result.outcome.summary, /axe-core did not run/);
+  await assertValid(result);
+  // Without axe configured, builtin-only scoring remains legitimate.
+  const { result: builtinOnly } = await evaluate(JSON.stringify(blocked));
+  assert.equal(builtinOnly.status, "passed");
+});
