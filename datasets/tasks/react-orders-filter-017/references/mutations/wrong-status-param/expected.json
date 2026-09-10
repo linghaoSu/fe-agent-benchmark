@@ -1,0 +1,12 @@
+{
+  "description": "URL sync writes the status under `state=` instead of `status=`. In-page filtering still works, but the critical url-state-and-direct-load test fails because the URL never contains `&status=shipped`. (Reading `?status=delivered` on direct load still works since the initial() parser is untouched.)",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

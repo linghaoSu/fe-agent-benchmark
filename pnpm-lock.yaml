@@ -23,6 +23,9 @@ importers:
       '@frontend-agent-benchmark/artifact-store-fs':
         specifier: workspace:*
         version: link:../../packages/artifact-store-fs
+      '@frontend-agent-benchmark/calibration':
+        specifier: workspace:*
+        version: link:../../packages/calibration
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -63,6 +66,12 @@ importers:
         specifier: workspace:*
         version: link:../state-store-sqlite
 
+  packages/calibration:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/contracts:
     dependencies:
       ajv:
@@ -95,6 +104,15 @@ importers:
       '@frontend-agent-benchmark/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/evaluator-engineering:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
 
   packages/evaluator-integrity:
     dependencies:
@@ -170,6 +188,9 @@ importers:
       '@frontend-agent-benchmark/evaluator-core':
         specifier: workspace:*
         version: link:../evaluator-core
+      '@frontend-agent-benchmark/evaluator-engineering':
+        specifier: workspace:*
+        version: link:../evaluator-engineering
       '@frontend-agent-benchmark/evaluator-integrity':
         specifier: workspace:*
         version: link:../evaluator-integrity

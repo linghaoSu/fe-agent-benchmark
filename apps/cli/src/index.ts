@@ -16,6 +16,7 @@ import {
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { buildCalibrationReport, calibrate, compareRepeats, type ReferenceExpectation } from "@frontend-agent-benchmark/calibration";
 import { tmpdir } from "node:os";
 
 import {
@@ -23,6 +24,7 @@ import {
   preflightTaskBundle,
   readPreflightedTaskBundle,
   validateContractFile,
+  type FrontendAgentEvaluationResult,
 } from "@frontend-agent-benchmark/contracts";
 import {
   ArtifactStoreError,
@@ -66,11 +68,13 @@ const usage = [
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow|reference:<name>] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
   "pnpm eval baseline <task-dir> [--scenario react-orders-gold] [--sandbox docker]",
+  "pnpm eval calibrate <task-dir> [--sandbox docker] [--out <report.json>]",
+  "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker]",
 ].join(" | ");
 const documentKindDetection = [
   "validate selects kinds by the first top-level marker in this order:",
@@ -205,6 +209,95 @@ async function writeBaselines(bundlePath: string, arguments_: string[]): Promise
     unlock(root);
     rmSync(root, { recursive: true, force: true });
   }
+}
+
+interface ReferenceRun { runId: string; result: FrontendAgentEvaluationResult; privateCodes: string[]; status: string }
+
+/** Runs one Task bundle once through the Docker pipeline with the given mock scenario in a throwaway database. */
+function runScenario(bundle: string, scenario: string, sandbox: string, seed: string, root: string): ReferenceRun {
+  const databasePath = join(root, `${randomUUID()}.sqlite`);
+  const cli = (...args: string[]) => {
+    const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
+    return JSON.parse(result.stdout) as Record<string, unknown>;
+  };
+  const created = cli("run", "create", bundle, "--seed", seed, "--sandbox", sandbox, "--db", databasePath) as { runId: string };
+  cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
+  const shown = cli("run", "show", created.runId, "--db", databasePath) as {
+    run: { status: string }; result?: { resultJson: string }; producerRecords: Array<{ privateCode: string }>;
+  };
+  if (shown.run.status !== "COMPLETED" || !shown.result) throw new Error(`Run for ${scenario} ended ${shown.run.status}`);
+  return { runId: created.runId, status: shown.run.status, result: JSON.parse(shown.result.resultJson) as FrontendAgentEvaluationResult, privateCodes: shown.producerRecords.map((record) => record.privateCode) };
+}
+
+function unlockTree(path: string): void {
+  let stat; try { stat = lstatSync(path); } catch { return; }
+  if (stat.isSymbolicLink()) return;
+  try { chmodSync(path, stat.mode | 0o700); } catch {}
+  if (stat.isDirectory()) for (const name of readdirSync(path)) unlockTree(join(path, name));
+}
+
+/**
+ * FR-014 calibration: runs every reference under `<bundle>/references/` (gold, alternative, mutations/*) and
+ * checks each Result against its `expected.json`. Gold/alternative default to `{ solved: true }`.
+ */
+async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
+  const parsed = parseArguments(arguments_);
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--sandbox" && option !== "--out")) return false;
+  const bundle = resolve(process.cwd(), bundlePath);
+  const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
+  const metadata = readPreflightedTaskBundle(bundle);
+  const referencesRoot = join(bundle, "references");
+  const references: string[] = [];
+  for (const entry of readdirSync(referencesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name === "mutations") {
+      for (const mutation of readdirSync(join(referencesRoot, "mutations"), { withFileTypes: true })) if (mutation.isDirectory()) references.push(`mutations/${mutation.name}`);
+    } else if (existsSync(join(referencesRoot, entry.name, "src"))) references.push(entry.name);
+  }
+  const root = mkdtempSync(join(tmpdir(), "fab-calibrate-"));
+  try {
+    const entries = references.sort().map((reference) => {
+      const expectedPath = join(referencesRoot, reference, "expected.json");
+      const expectation = existsSync(expectedPath)
+        ? JSON.parse(readFileSync(expectedPath, "utf8")) as ReferenceExpectation
+        : { expect: { valid: true, solved: true } };
+      const run = runScenario(bundle, `reference:${reference}`, sandbox, "1", root);
+      return calibrate({ reference, runId: run.runId, result: run.result, privateCodes: run.privateCodes }, expectation);
+    });
+    const report = buildCalibrationReport({ id: metadata.taskId, version: metadata.version }, entries, new Date().toISOString());
+    const out = parsed.options["--out"] as string | undefined;
+    if (out) writeFileSync(resolve(process.cwd(), out), `${JSON.stringify(report, null, 2)}\n`);
+    console.log(JSON.stringify(report));
+    process.exitCode = report.passed ? 0 : 1;
+    return true;
+  } finally { unlockTree(root); rmSync(root, { recursive: true, force: true }); }
+}
+
+/** SC-005 deterministic repeat matrix: same bundle, scenario and seed N times; conclusions must be identical. */
+async function repeatTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
+  const parsed = parseArguments(arguments_);
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--sandbox", "--times", "--scenario", "--seed"].includes(option))) return false;
+  const bundle = resolve(process.cwd(), bundlePath);
+  const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
+  const times = Number(parsed.options["--times"] ?? 2);
+  if (!Number.isInteger(times) || times < 2 || times > 10) return false;
+  const scenario = (parsed.options["--scenario"] as string | undefined) ?? "reference:gold";
+  const seed = (parsed.options["--seed"] as string | undefined) ?? "1";
+  const root = mkdtempSync(join(tmpdir(), "fab-repeat-"));
+  try {
+    const runs = Array.from({ length: times }, () => runScenario(bundle, scenario, sandbox, seed, root));
+    const comparison = compareRepeats(runs.map((run) => run.result));
+    console.log(JSON.stringify({ scenario, seed, times, runIds: runs.map((run) => run.runId), identical: comparison.identical, differences: comparison.differences, comparedFields: comparison.compared.length }));
+    process.exitCode = comparison.identical ? 0 : 1;
+    return true;
+  } finally { unlockTree(root); rmSync(root, { recursive: true, force: true }); }
+}
+
+/** `reference:<name>` selects `<bundle>/references/<name>/src` (e.g. gold, alternative, mutations/drop-search-handler). */
+function referenceScenario(value: string): string | undefined {
+  const match = /^reference:([A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)?)$/.exec(value);
+  return match?.[1];
 }
 
 function createRun(arguments_: string[]): boolean {
@@ -420,7 +513,8 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
-      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string))
+      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string)
+      && !referenceScenario(parsed.options["--mock-scenario"] as string))
     || (parsed.options["--evaluators"] !== undefined && parsed.options["--evaluators"] !== "noop" && parsed.options["--evaluators"] !== "pipeline")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
@@ -483,7 +577,9 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             args: [
               new URL("../../../packages/adapter-mock/dist/index.js", import.meta.url).pathname,
               ...(typeof parsed.options["--mock-scenario"] === "string"
-                ? [`--${parsed.options["--mock-scenario"]}`, ...(["react-orders-gold", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string) ? [join(task.path, "references", "gold")] : [])]
+                ? (referenceScenario(parsed.options["--mock-scenario"] as string)
+                  ? ["--reference", join(task.path, "references", referenceScenario(parsed.options["--mock-scenario"] as string)!)]
+                  : [`--${parsed.options["--mock-scenario"]}`, ...(["react-orders-gold", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string) ? [join(task.path, "references", "gold")] : [])])
                 : sandbox ? ["--docker-workspace"] : []),
             ],
           },
@@ -574,6 +670,10 @@ try {
   } else if (command === "run" && inputPath === "export" && exportRun(extraArguments)) {
     // Handled above.
   } else if (command === "baseline" && inputPath && await writeBaselines(inputPath, extraArguments)) {
+    // Handled above.
+  } else if (command === "calibrate" && inputPath && await calibrateTask(inputPath, extraArguments)) {
+    // Handled above.
+  } else if (command === "repeat" && inputPath && await repeatTask(inputPath, extraArguments)) {
     // Handled above.
   } else {
     printUsage();

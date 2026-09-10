@@ -12,6 +12,7 @@
     "@frontend-agent-benchmark/export-policy": "workspace:*",
     "@frontend-agent-benchmark/run-coordinator": "workspace:*",
     "@frontend-agent-benchmark/sandbox-docker": "workspace:*",
+    "@frontend-agent-benchmark/calibration": "workspace:*",
     "@frontend-agent-benchmark/state-store-sqlite": "workspace:*",
     "@frontend-agent-benchmark/tool-router": "workspace:*"
   }

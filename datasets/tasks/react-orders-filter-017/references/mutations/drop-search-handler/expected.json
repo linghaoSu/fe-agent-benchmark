@@ -1,0 +1,12 @@
+{
+  "description": "The search input is a controlled input whose onChange handler is a no-op, so typing never updates state and the list never narrows by customer/order id. Trips critical tests customer-search and url-state-and-direct-load (q never reaches the URL), plus non-critical empty-state and clear-search.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

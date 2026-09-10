@@ -612,3 +612,42 @@
   passed on the first run; the single failure (GATE-V2.2-003, adapter handshake
   under host load) passed 9/9 on an immediate isolated rerun. `pnpm build` and
   `pnpm check:generated` exit 0.
+
+## 2026-09-10 — V5.2 Engineering evaluator, calibration and repeat comparator
+
+### Scope and decisions
+
+- Added `packages/evaluator-engineering` (informational, prerequisite build):
+  change footprint, dependency-manifest changes, generated/build output,
+  debug leftovers, hardcoded test data heuristic, and tests-touched-with-
+  source; `scores.engineering` and `extensions.dimensions.engineering` now
+  come from it and feed `extensions.quality`.
+- Added `packages/calibration`: pure `calibrate()` of an observed Result
+  against a reference's `expected.json` (valid/solved/gates/dimensions/codes/
+  score bounds), `buildCalibrationReport()` with mutation capture rate, and
+  `compareRepeats()` which ignores ids/efficiency/evidence layout and flags
+  any other difference.
+- CLI: `pnpm eval calibrate <task> [--out]` runs gold, alternative and every
+  `references/mutations/*` through the Docker pipeline; `pnpm eval repeat
+  <task> --times N` runs one scenario repeatedly; generic
+  `--mock-scenario reference:<name>` writes any reference tree (src/, tests/).
+- react-orders-filter-017 now carries a structurally different alternative
+  (useReducer, URL hook, components, `<ul>` list) and six mutations, each a
+  1–3 line defect on gold with a declared expectation; gold and alternative
+  each ship a unit test alongside the extracted filtering module.
+
+### Verification
+
+- Unit gates: v5-engineering 10/10, v5-calibration 3/3.
+- Real Docker: calibration passed with mutationCaptureRate 1 (FR-014 /
+  SC-003); repeat ×3 identical (SC-005).
+- `node --test --test-concurrency=1 tests/gate/*.test.mjs`: 164 gates, 163
+  green plus one stale V5.1 expectation (engineering now evaluated) fixed and
+  rerun green. `pnpm build`, `pnpm check:generated` exit 0.
+
+### Residual risks / next stage
+
+- Visual scoring of the alternative is legitimately low (0.21) because its
+  `<ul>` layout differs from gold baselines; the calibration expectation for
+  correct alternatives therefore checks solved/gates, not visual. V6 owns
+  seeds, success@k, comparison CLI and the 10-task dataset.

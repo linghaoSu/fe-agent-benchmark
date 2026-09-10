@@ -1,0 +1,12 @@
+{
+  "description": "Status filtering is computed once at mount from a ref captured in a `useMemo(..., [])` closure, so later status changes update the select and the URL but never narrow the rows (stale closure). Search still works. Trips only the critical status-filter test (expects 3 rows, gets 8). url-state-and-direct-load still passes because the URL is written correctly and the ref is seeded from `?status=delivered` on direct load; status-filter alone fails the gate.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

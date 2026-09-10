@@ -1,0 +1,12 @@
+{
+  "description": "When no order matches, nothing is rendered instead of the `data-testid=\"empty-state\"` element. All critical tests pass; only the non-critical empty-state test fails, so the task counts as solved but functional score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

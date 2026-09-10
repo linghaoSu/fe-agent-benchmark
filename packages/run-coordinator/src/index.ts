@@ -50,6 +50,7 @@ import { PlaywrightEvaluator } from "@frontend-agent-benchmark/evaluator-playwri
 import { VisualEvaluator } from "@frontend-agent-benchmark/evaluator-visual";
 import { ResponsiveEvaluator } from "@frontend-agent-benchmark/evaluator-responsive";
 import { A11yEvaluator } from "@frontend-agent-benchmark/evaluator-a11y";
+import { EngineeringEvaluator } from "@frontend-agent-benchmark/evaluator-engineering";
 import { DockerSandboxRuntime } from "@frontend-agent-benchmark/sandbox-docker";
 
 export interface PhaseContext {
@@ -391,6 +392,7 @@ export class PipelineEvaluationPhase implements EvaluationPhase {
       ];
       if (this.options.app) plugins.push(new StartEvaluator({ command: this.options.app.command, port: this.options.app.port, start: () => runtime!.startApp(this.options.app!.command, this.options.app!.port) }));
       if (this.options.app && this.options.hiddenBundlePath) plugins.push(new PlaywrightEvaluator({ hiddenBundlePath: this.options.hiddenBundlePath, port: this.options.app.port, run: (script) => runtime!.runPlaywright(script) }));
+      plugins.push(new EngineeringEvaluator({ patch: this.options.patch(context), policy: { writablePaths: this.options.policy.writablePaths, allowDependencyChanges: this.options.policy.allowDependencyChanges } }));
       if (this.options.app && this.options.quality && this.options.quality.viewports.length) {
         const { viewports, locale, timezone, visualMismatchThreshold, axeSource } = this.options.quality;
         const port = this.options.app.port;
@@ -682,7 +684,7 @@ export class RunExecutor {
         score: { value: found?.status === "passed" || found?.status === "failed" ? found.outcome.score ?? 0 : 0, evidenceRefs: refs && refs.length ? refs : undefined },
       };
     };
-    const visual = dimension("visual"); const responsive = dimension("responsive"); const accessibility = dimension("accessibility");
+    const visual = dimension("visual"); const responsive = dimension("responsive"); const accessibility = dimension("accessibility"); const engineering = dimension("engineering");
     const valid = integrity ? integrity.status === "passed" : true;
     const required = JSON.parse(run.resolvedInputJson) as { evaluation?: { requiredGates?: { criticalFunctionalTests?: boolean }; weights?: Record<string, number> } };
     // "not_evaluated" (no functional evaluator configured, e.g. the no-op path) leaves solved to the
@@ -691,7 +693,7 @@ export class RunExecutor {
     const functionalRequired = Boolean(required.evaluation?.requiredGates?.criticalFunctionalTests) && functionalGate !== "not_evaluated";
     const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed") && (!functionalRequired || functionalGate === "passed");
     const efficiency = this.attemptEfficiency.get(attempt.attemptId);
-    const evidenceRefs = evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`));
+    const evidenceRefs = [...new Set(evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`)))];
     const score = { value: build?.status === "passed" ? 1 : 0, evidenceRefs: build?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs };
     const result: FrontendAgentEvaluationResult = {
       schemaVersion: 1,
@@ -708,7 +710,7 @@ export class RunExecutor {
         visual: { value: visual.score.value, evidenceRefs: visual.score.evidenceRefs ?? evidenceRefs },
         responsive: { value: responsive.score.value, evidenceRefs: responsive.score.evidenceRefs ?? evidenceRefs },
         accessibility: { value: accessibility.score.value, evidenceRefs: accessibility.score.evidenceRefs ?? evidenceRefs },
-        engineering: { value: 0, evidenceRefs },
+        engineering: { value: engineering.score.value, evidenceRefs: engineering.score.evidenceRefs ?? evidenceRefs },
       },
       efficiency: {
         inputTokens: 0,
@@ -721,12 +723,13 @@ export class RunExecutor {
       extensions: {
         executionClassification: attempt.executionClassification,
         gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: functionalGate },
-        dimensions: { visual: visual.gate, responsive: responsive.gate, accessibility: accessibility.gate, engineering: "not_evaluated" },
-        ...qualityExtension(required.evaluation?.weights, { functional: functionalGate === "passed" || functionalGate === "failed" ? functional?.outcome.score ?? 0 : undefined, visual: visual.gate === "passed" || visual.gate === "failed" ? visual.score.value : undefined, responsive: responsive.gate === "passed" || responsive.gate === "failed" ? responsive.score.value : undefined, accessibility: accessibility.gate === "passed" || accessibility.gate === "failed" ? accessibility.score.value : undefined }),
+        dimensions: { visual: visual.gate, responsive: responsive.gate, accessibility: accessibility.gate, engineering: engineering.gate },
+        ...qualityExtension(required.evaluation?.weights, { functional: functionalGate === "passed" || functionalGate === "failed" ? functional?.outcome.score ?? 0 : undefined, visual: visual.gate === "passed" || visual.gate === "failed" ? visual.score.value : undefined, responsive: responsive.gate === "passed" || responsive.gate === "failed" ? responsive.score.value : undefined, accessibility: accessibility.gate === "passed" || accessibility.gate === "failed" ? accessibility.score.value : undefined, engineering: engineering.gate === "passed" || engineering.gate === "failed" ? engineering.score.value : undefined }),
       },
     };
-    if (!validateContractDocument(result, "result").valid) {
-      throw new RunCoordinatorError("RESULT_INVALID", "Canonical Result is invalid");
+    const resultValidation = validateContractDocument(result, "result");
+    if (!resultValidation.valid) {
+      throw new RunCoordinatorError("RESULT_INVALID", `Canonical Result is invalid: ${JSON.stringify(resultValidation.errors).slice(0, 400)}`);
     }
     const resultJson = JSON.stringify(result);
     const resultChecksum = `sha256:${createHash("sha256").update(resultJson).digest("hex")}`;

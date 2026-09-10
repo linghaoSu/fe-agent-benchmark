@@ -1,19 +1,16 @@
 import React from "/vendor/react.js";
 import { createRoot } from "/vendor/react-dom-client.js";
 import { orders } from "./data/orders.js";
+import { filterOrders, parseFilters } from "./filters.js";
 
 const labels = { pending: "待处理", shipped: "已发货", delivered: "已送达" };
-const states = ["", "pending", "shipped", "delivered"];
-function initial() {
-  const query = new URLSearchParams(location.search);
-  return { q: query.get("q") || "", status: states.includes(query.get("status")) ? query.get("status") : "" };
-}
+function initial() { return parseFilters(location.search); }
 function App() {
   const [filters, setFilters] = React.useState(initial);
   const [loading, setLoading] = React.useState(true);
   React.useEffect(() => { const timer = setTimeout(() => setLoading(false), 0); return () => clearTimeout(timer); }, []);
   React.useEffect(() => { history.replaceState(null, "", `?q=${encodeURIComponent(filters.q)}&status=${filters.status}`); }, [filters]);
-  const visible = orders.filter((order) => (!filters.q || `${order.id}${order.customer}`.toLowerCase().includes(filters.q.toLowerCase())) && (!filters.status || order.status === filters.status));
+  const visible = filterOrders(orders, filters);
   const change = (name) => (event) => setFilters((current) => ({ ...current, [name]: event.target.value }));
   return React.createElement("section", null,
     React.createElement("h1", null, "订单列表"),

@@ -560,3 +560,34 @@
   consecutive runs.
 - New gates: V4.1-002b (informational downgrade), V5-A11Y-009 (axe blocked),
   V5-VISUAL-010 (pixel budget). All V5 unit + real-Docker quality gates green.
+
+## 2026-09-10 — V5.2 Engineering evaluator, calibration report, repeat comparator red → green
+
+- Sub agents: `packages/evaluator-engineering` (6 deterministic patch checks,
+  10 unit gates) and the react-orders `references/alternative` (useReducer +
+  hooks/components, `<ul>` list) plus six `references/mutations/*` with
+  `expected.json`. Claude: `packages/calibration` (`calibrate`,
+  `buildCalibrationReport`, `compareRepeats`), `pnpm eval calibrate` and
+  `pnpm eval repeat`, generic `--mock-scenario reference:<name>`, pipeline and
+  aggregation wiring for `scores.engineering`.
+- Red 1: Result became schema-invalid (`evidenceRefs` uniqueItems) once
+  Integrity and Engineering both cited `patch.diff`; aggregation dedupes.
+  Validation errors are now included in RESULT_INVALID messages.
+- Red 2: gold and alternative scored engineering 0.83 — `tests-touched-with-
+  source` fired because neither reference shipped a test. That is a real
+  quality gap in the references, not the rule: gold gained `src/filters.js`
+  + `tests/filters.test.mjs`, alternative gained `src/selectors.js` +
+  `tests/select-visible.test.mjs`; the reference scenario now writes every
+  writable tree under a reference (src/ and tests/).
+- Red 3: mutations had been copied from the pre-refactor gold; regenerated
+  each as exactly one defect on the current gold (1–3 changed lines each).
+- Red 4 (transient): one gold run scored functional 0.8 on a host at load
+  ~60 while 3 consecutive repeats were identical; hidden-test defaults raised
+  to 15s action / 30s navigation.
+- Green: `pnpm eval calibrate datasets/tasks/react-orders-filter-017` →
+  passed=true, mutationCaptureRate=1 (8/8 entries): gold and alternative
+  solved with engineering 1; drop-search-handler / wrong-status-param /
+  stale-request-overwrite → solved=false; remove-empty-state → functional
+  0.8 with critical gate passed; remove-aria → accessibility 0.88 failed;
+  force-overflow → responsive 0.33 + visual failed. `pnpm eval repeat --times
+  3` on gold → identical conclusions across 21 compared fields.

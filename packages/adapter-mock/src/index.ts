@@ -20,11 +20,13 @@ function goldScenario(mutate: (path: string, content: string) => string = (_path
     const path = join(directory, entry.name);
     return entry.isDirectory() ? files(path) : [path];
   });
+  // A reference may ship any writable top-level tree (src/, tests/); everything under it is written verbatim.
+  const trees = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
   return {
-    toolRequests: files(join(root, "src")).map((file, index) => ({
-      toolCallId: `react-orders-gold-${index}`,
+    toolRequests: trees.flatMap((tree) => files(join(root, tree)).map((file) => ({ tree, file }))).map(({ tree, file }, index) => ({
+      toolCallId: `reference-${index}`,
       tool: "write_file",
-      arguments: { path: join("src", relative(join(root, "src"), file)), content: mutate(relative(join(root, "src"), file), readFileSync(file, "utf8")) },
+      arguments: { path: join(tree, relative(join(root, tree), file)), content: mutate(relative(join(root, "src"), file), readFileSync(file, "utf8")) },
     })),
     patch: "",
   };
@@ -58,6 +60,8 @@ const scenario = process.argv[2]
       toolRequests: [{ toolCallId: "forbidden-write", tool: "write_file", arguments: { path: "scripts/check.mjs", content: "process.exit(1);\n" } }], patch: "diff --git a/scripts/check.mjs b/scripts/check.mjs\n--- a/scripts/check.mjs\n+++ b/scripts/check.mjs\n@@ -1 +1 @@\n-process.exit(0);\n+process.exit(1);\n",
     } : process.argv[2] === "--react-orders-gold" ? goldScenario()
     : process.argv[2] === "--react-orders-noop" ? { toolRequests: [], patch: "" }
+    // Generic calibration scenario: write `<bundle>/references/<name>/src` verbatim (gold, alternative or a mutation).
+    : process.argv[2] === "--reference" ? goldScenario()
     // Gold behaviour with a forced horizontal overflow: functional stays green, responsive must fail.
     : process.argv[2] === "--react-orders-mutation-overflow" ? goldScenario((path, content) => (
       path === "app.js" ? content.replace('React.createElement("table", null,', 'React.createElement("table", { style: { minWidth: "2000px" } },') : content

@@ -69,7 +69,7 @@ function dockerScenario(name, verify) {
 
 dockerScenario("react-orders-gold", ({ result }) => {
   assert.equal(result.solved, true);
-  assert.deepEqual(result.extensions.dimensions, { visual: "passed", responsive: "passed", accessibility: "passed", engineering: "not_evaluated" });
+  assert.deepEqual(result.extensions.dimensions, { visual: "passed", responsive: "passed", accessibility: "passed", engineering: "passed" });
   assert.ok(result.scores.visual.value >= 0.9, `visual ${result.scores.visual.value}`);
   assert.equal(result.scores.responsive.value, 1);
   assert.equal(result.scores.accessibility.value, 1);

@@ -1,0 +1,12 @@
+{
+  "description": "The orders table is given `style: { minWidth: \"2000px\" }`, forcing horizontal overflow at every viewport (most obviously 375px mobile). Functional tests all pass; the responsive dimension should fail. Visual mismatch against baselines is also likely.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "responsive": "failed"
+    }
+  }
+}

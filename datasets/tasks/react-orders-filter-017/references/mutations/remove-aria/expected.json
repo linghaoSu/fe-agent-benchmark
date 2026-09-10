@@ -1,0 +1,15 @@
+{
+  "description": "Both aria-labels are stripped from the search input and the status select; the input keeps only a placeholder and the select has no accessible name (no <label>, no aria-label, no id). All hidden functional tests pass; the accessibility dimension should fail (unlabeled form controls) and its score be below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}
