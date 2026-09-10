@@ -1,0 +1,12 @@
+{
+  "description": "Descending order is produced by reversing the ascending result instead of negating the comparator, so employees in the same department come out in reverse source order when descending (Sales becomes Julia Xu, Chloe Zhou, Fiona Chen). Trips only critical department-descending-stable; salary-numeric-ascending and source-not-mutated pass because they never inspect tie order in descending direction.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

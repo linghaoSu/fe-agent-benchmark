@@ -1,0 +1,15 @@
+{
+  "description": "Header buttons render no visible text and no aria-label (only the aria-hidden indicator on the active column), so they have no accessible name. All critical tests pass; the non-critical headers-are-named-buttons test fails and the accessibility dimension fails (button-name / axe button-name).",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

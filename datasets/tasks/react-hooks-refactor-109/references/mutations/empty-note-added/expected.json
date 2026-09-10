@@ -1,0 +1,4 @@
+{
+  "description": "useDashboard's addNote drops the trim/empty guard and dispatches the raw draft, so blank submissions add empty note items. All three critical tests still pass; only the non-critical empty-note-ignored test fails (4 items instead of 2), so the task counts as solved but functional score is below 1.",
+  "expect": { "solved": true, "gates": { "criticalFunctionalTests": "passed" }, "scoreBelow": { "functional": 1 } }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "The `aria-expanded` attribute is removed from the nav-toggle button; toggling still works and aria-controls/aria-label remain. Only the non-critical toggle-reports-aria-expanded test fails, so the task is solved with functional score below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

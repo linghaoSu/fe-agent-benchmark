@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "suiteId": "mvp-regression",
-  "version": 2,
+  "version": 3,
   "type": "regression",
-  "manifestChecksum": "sha256:db32b44a9198e9da565ba79e9413620098b7cb21455fc9c42fa12918512cdb8b",
-  "publishedAt": "2026-09-10T11:56:39.769Z",
+  "manifestChecksum": "sha256:825ba9f4c8c7149add4985e415c2a4145d520477a81cf688d223de8faf6b95a1",
+  "publishedAt": "2026-09-10T13:33:09.731Z",
   "tasks": [
     {
       "taskId": "react-cart-quantity-021",
@@ -12,14 +12,44 @@
       "bundleChecksum": "sha256:f73f846b192c300903cce704d83de407643e2293b5ecd595f749d5205455458c"
     },
     {
+      "taskId": "react-form-validation-065",
+      "version": 1,
+      "bundleChecksum": "sha256:5965d73519f27f381ab48396f321c9be10c4fb4eb67d287212a40356a048e894"
+    },
+    {
+      "taskId": "react-hooks-refactor-109",
+      "version": 1,
+      "bundleChecksum": "sha256:055127d3162801c8829f53b698c2eaae97cbbe7c4f671627c946c0c47fbd6750"
+    },
+    {
       "taskId": "react-orders-filter-017",
       "version": 1,
       "bundleChecksum": "sha256:25ee88416a99224342717b93dfb79822e1328cb48b7fb43e008b3d593973379e"
     },
     {
+      "taskId": "react-pagination-bug-076",
+      "version": 1,
+      "bundleChecksum": "sha256:9e44c843ebd4ddfd6b3461d79ff7d643f6a6906511aede1b03f19182ba046673"
+    },
+    {
+      "taskId": "react-responsive-nav-098",
+      "version": 1,
+      "bundleChecksum": "sha256:3d1a0895562f83c34b0ea01cfc70484f6866d10a9ac8220225799a7ee8bac4e2"
+    },
+    {
       "taskId": "react-search-debounce-043",
       "version": 1,
       "bundleChecksum": "sha256:0001ea75a2f036ae2b921e957e17654b074fbce6712f89569a27854d2321ef2f"
+    },
+    {
+      "taskId": "react-sort-bug-087",
+      "version": 1,
+      "bundleChecksum": "sha256:32bdacc50f8a6fdc81247a8bdb7e98d385a58a1be5bb78e9e9669b0e1808f104"
+    },
+    {
+      "taskId": "react-tabs-keyboard-054",
+      "version": 1,
+      "bundleChecksum": "sha256:29026b49df6bb5e658d88a846a5fd8f65bd7c3ffa7fdee4f08100a21b51fdc4e"
     },
     {
       "taskId": "react-todo-toggle-bug-032",
@@ -28,6 +58,6 @@
     }
   ],
   "extensions": {
-    "taskCount": 4
+    "taskCount": 10
   }
 }

@@ -1,0 +1,4 @@
+{
+  "description": "useDashboard's addNote no longer calls setDraft('') after dispatching, so the textarea keeps its text after a note is added. Trips the critical note-input-clears test (the note itself is still appended).",
+  "expect": { "solved": false, "gates": { "criticalFunctionalTests": "failed" }, "codes": ["FUNCTIONAL_CRITICAL_FAILED"] }
+}

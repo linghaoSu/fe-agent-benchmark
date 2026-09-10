@@ -1,0 +1,10 @@
+{
+  "description": "Reference implementation: a <style> tag from src/responsive.js, matchMedia('(max-width: 767px)') hook, nav-toggle button (aria-expanded/aria-controls/aria-label) rendered only on mobile, nav-list toggled via the hidden attribute, and a CSS grid that collapses to one fluid column on mobile. Must be solved with every quality dimension passing against its own baselines.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

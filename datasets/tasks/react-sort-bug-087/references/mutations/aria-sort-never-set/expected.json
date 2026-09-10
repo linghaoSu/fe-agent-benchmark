@@ -1,0 +1,12 @@
+{
+  "description": "The <th> never receives an aria-sort attribute. All three critical tests pass; only the non-critical aria-sort-reflects-active-column test fails, so the task is solved but the functional score is below 1.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "scoreBelow": {
+      "functional": 1
+    }
+  }
+}

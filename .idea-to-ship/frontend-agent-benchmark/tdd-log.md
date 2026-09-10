@@ -662,3 +662,20 @@
   literal value; (2) the responsive `no-zero-size-visible-testids` check
   flagged an empty `form-status` live region (360×0) — empty elements are now
   legitimately zero-size (V5-RESP-010). 065 then passed 7/7 with 100% capture.
+- V6.3 complete — 10 calibrated tasks in the D8 distribution (3 feature: 017,
+  021, 065; 3 bugfix: 032, 076, 087; visual 098; async 043; accessibility 054;
+  refactor 109). Last three exposed two more defects, fixed with gates:
+  (1) responsive visibility was per-element (`display`/`visibility` of the
+  node itself), so the 7 links inside a collapsed `hidden` nav list counted
+  as visible zero-size elements — measurement now uses the captured
+  `Element.prototype.checkVisibility` (ancestor-aware); (2) gold for the
+  refactor task changed 27 source lines with no test change — a legitimate
+  engineering finding, resolved by moving the "no empty notes" rule into the
+  pure reducer with a unit test (and regenerating the mutations from it).
+  All 10 tasks: mutationCaptureRate 1. `datasets/suites/mvp-regression.json`
+  v3 lists all 10 with unique bundle checksums.
+- The tightened credential pattern broke GATE-V2.2-006 (unquoted
+  `api_key=adapterstderrsecret123456` must still be redacted); the pattern now
+  accepts a quoted value OR a bare 12+ char value containing a digit, which
+  keeps redaction and still ignores code identifiers. Full suite 175 gates,
+  174 first-pass + this fix rerun green.

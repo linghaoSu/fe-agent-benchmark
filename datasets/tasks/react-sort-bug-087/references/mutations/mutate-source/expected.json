@@ -1,0 +1,12 @@
+{
+  "description": "app.js writes every sorted result back into the shared employees array (splice) and renders that array, reintroducing source mutation. After sorting by name and then salary, the source order is no longer the original, so the final department-ascending check in critical source-not-mutated yields Design as David Yang before Ivan Wu instead of source order. salary-numeric-ascending passes (values only) and department-descending-stable passes (a stable descending sort of an already stably ascending-sorted array happens to match source tie order).",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

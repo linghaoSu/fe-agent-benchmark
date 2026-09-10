@@ -1,0 +1,12 @@
+{
+  "description": "Each card article gets an inline `style: { width: \"420px\" }`, so at 375px the single-column grid still overflows horizontally (scrollWidth 452 > 375). Nav collapse and toggle work, so every critical test passes; the non-critical mobile-no-horizontal-overflow hidden test and the responsive dimension fail.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "responsive": "failed"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "The nav-toggle button has no onClick handler; it renders with aria-expanded=\"false\" and the list stays hidden forever on mobile. Trips critical mobile-toggle-reveals-all-links (and non-critical toggle-reports-aria-expanded). Collapsed-by-default and desktop tests pass.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

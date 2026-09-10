@@ -1,0 +1,4 @@
+{
+  "description": "The store singleton was replaced only superficially: the hook's reducer wrapper reads a module-level `snapshot` that is never advanced, so every action is applied to the initial state. The second increment click still shows 1 and a second note replaces the first. Trips the critical increment-then-reset and add-two-notes tests.",
+  "expect": { "solved": false, "gates": { "criticalFunctionalTests": "failed" }, "codes": ["FUNCTIONAL_CRITICAL_FAILED"] }
+}

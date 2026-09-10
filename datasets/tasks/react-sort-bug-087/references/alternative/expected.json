@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different correct fix: useReducer-based hook, Map-of-original-index comparator with Intl.Collator, ARIA grid built from <div role=table>/<ul role=rowgroup>/<li role=row> instead of a <table>, aria-sort only present on the active columnheader, header buttons with aria-label. Must be solved; visual is not asserted because the layout differs from gold.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "`const mobile = false` replaces the useMobile() hook, so the nav never collapses: no nav-toggle is rendered and all 7 links stay visible at 375px. Trips critical mobile-nav-collapsed-by-default (and mobile-toggle-reveals-all-links, plus the two non-critical toggle tests). Desktop test still passes.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

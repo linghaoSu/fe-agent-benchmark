@@ -1,0 +1,10 @@
+{
+  "description": "Reference refactor: src/store.js removed, state lives in useDashboard (useReducer over the pure reducer), behaviour and testids unchanged. Must be solved with every asserted dimension passing.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

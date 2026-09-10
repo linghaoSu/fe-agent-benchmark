@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different correct implementation: useReducer state, component split (Nav/Cards), a useMediaQuery hook, inline styles computed from the mobile flag instead of a <style> tag, nav links rendered as a role=list <div> of anchors, list hidden via display:none, toggle with a visible text label. Same outcome as gold.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed", "engineering": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1, "engineering": 1 }
+  }
+}

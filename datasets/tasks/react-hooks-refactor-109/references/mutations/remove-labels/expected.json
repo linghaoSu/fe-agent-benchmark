@@ -1,0 +1,4 @@
+{
+  "description": "Accessible names stripped: the textarea loses its aria-label (no <label>, no id) and the increment/reset buttons render only aria-hidden glyphs, leaving them with empty accessible names. All hidden functional behaviour tests pass; the accessibility dimension should fail (unlabeled form controls / buttons without discernible text) and its score be below 1.",
+  "expect": { "solved": true, "gates": { "criticalFunctionalTests": "passed" }, "dimensions": { "accessibility": "failed" }, "scoreBelow": { "accessibility": 1 } }
+}

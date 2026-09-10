@@ -1,0 +1,15 @@
+{
+  "description": "The nav-toggle button loses its aria-label and its visible text is replaced by an aria-hidden CSS-drawn hamburger span, leaving it with an empty accessible name. All critical tests pass; the non-critical toggle-has-accessible-name test and the accessibility dimension (button-name) fail.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "accessibility": "failed"
+    },
+    "scoreBelow": {
+      "accessibility": 1
+    }
+  }
+}

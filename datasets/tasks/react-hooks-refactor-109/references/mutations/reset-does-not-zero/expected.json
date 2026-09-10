@@ -1,0 +1,4 @@
+{
+  "description": "useDashboard's reset dispatches the unknown action type `resetCount`, so the reducer returns state unchanged and the count stays at 3 after reset. Trips the critical increment-then-reset test; reducer.js and its unit test are untouched.",
+  "expect": { "solved": false, "gates": { "criticalFunctionalTests": "failed" }, "codes": ["FUNCTIONAL_CRITICAL_FAILED"] }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "app.js stringifies salary for display before handing rows to sortEmployees, so the numeric branch of compareValues is never reached and salaries compare as strings (\"12000\" < \"900\"). Trips critical salary-numeric-ascending (900 is not first / 20000 not last) and critical source-not-mutated (salary descending is no longer numerically ordered). sorting.js and its unit tests are untouched so the build gate still passes.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}
