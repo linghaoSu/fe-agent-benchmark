@@ -24,6 +24,7 @@ import {
   checksumTaskBundle,
   preflightTaskBundle,
   readPreflightedTaskBundle,
+  containsObviousCredential,
   validateContractDocument,
   validateContractFile,
   type FrontendAgentEvaluationResult,
@@ -81,6 +82,7 @@ const usage = [
   "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker]",
   "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--db <path>]",
   "pnpm eval compare --config <id>=<runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]",
+  "pnpm eval suite publish --id <suiteId> --version <n> --type benchmark|regression --task <task-dir> [--task ...] --out <suite.json>",
 ].join(" | ");
 const documentKindDetection = [
   "validate selects kinds by the first top-level marker in this order:",
@@ -420,6 +422,93 @@ function compareRuns(arguments_: string[]): boolean {
     console.log(JSON.stringify(report));
     return true;
   } finally { store.close(); }
+}
+
+/**
+ * Publishes an immutable Suite snapshot: `eval suite publish --id <suiteId> --version <n> --type benchmark|regression
+ * --task <bundle-dir> [--task ...] --out <suite.json>`. Publication gates (V6): every task must validate,
+ * checksum, carry gold + alternative + ≥1 mutation with expectations, and contain no credential pattern in
+ * its public or hidden text files; two tasks may not share a bundle checksum. The manifest checksum covers
+ * the sorted task list so a republish with any changed bundle produces a different Suite identity.
+ */
+function publishSuite(arguments_: string[]): boolean {
+  const tasks: string[] = [];
+  const options: Record<string, string> = {};
+  for (let index = 0; index < arguments_.length; index += 1) {
+    const argument = arguments_[index]!;
+    const value = arguments_[index + 1];
+    if (!argument.startsWith("--") || typeof value !== "string") return false;
+    if (argument === "--task") tasks.push(value);
+    else if (["--id", "--version", "--type", "--out"].includes(argument)) options[argument] = value;
+    else return false;
+    index += 1;
+  }
+  const version = Number(options["--version"]);
+  if (!tasks.length || !options["--id"] || !options["--out"] || !Number.isInteger(version) || version < 1 || !["benchmark", "regression"].includes(options["--type"] ?? "")) return false;
+
+  const denied: string[] = [];
+  const entries = tasks.map((taskPath) => {
+    const bundle = resolve(process.cwd(), taskPath);
+    const validation = validateContractFile(join(bundle, "task.yaml"));
+    if (!validation.valid) denied.push(`${taskPath}: task.yaml invalid`);
+    const checksum = checksumTaskBundle(bundle);
+    if (!("bundleChecksum" in checksum)) { denied.push(`${taskPath}: checksum failed`); return undefined; }
+    const metadata = readPreflightedTaskBundle(bundle);
+    const references = join(bundle, "references");
+    const hasMutation = existsSync(join(references, "mutations")) && readdirSync(join(references, "mutations"), { withFileTypes: true }).some((entry) => entry.isDirectory() && existsSync(join(references, "mutations", entry.name, "expected.json")));
+    for (const required of ["gold", "alternative"]) if (!existsSync(join(references, required, "expected.json"))) denied.push(`${taskPath}: references/${required}/expected.json missing`);
+    if (!hasMutation) denied.push(`${taskPath}: no mutation with expected.json`);
+    if (!metadata.hiddenBundle || !existsSync(join(bundle, metadata.hiddenBundle))) denied.push(`${taskPath}: hidden bundle missing`);
+    // Data hygiene (SC-013): no credential-looking text anywhere in the bundle, public or hidden.
+    const scan = (directory: string): void => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (entry.isSymbolicLink()) { denied.push(`${taskPath}: symlink ${path}`); continue; }
+        if (entry.isDirectory()) { if (entry.name !== "node_modules" && entry.name !== "dist") scan(path); continue; }
+        if (!/\.(js|mjs|ts|json|yaml|yml|md|html|css|txt)$/.test(entry.name)) continue;
+        if (containsObviousCredential(readFileSync(path, "utf8"))) denied.push(`${taskPath}: credential pattern in ${path.slice(bundle.length + 1)}`);
+      }
+    };
+    scan(bundle);
+    return { taskId: metadata.taskId, version: metadata.version, bundleChecksum: checksum.bundleChecksum };
+  }).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+  const checksums = new Map<string, string>();
+  for (const entry of entries) {
+    const previous = checksums.get(entry.bundleChecksum);
+    if (previous) denied.push(`${entry.taskId} shares a bundle checksum with ${previous}`);
+    checksums.set(entry.bundleChecksum, entry.taskId);
+  }
+  const ids = new Map<string, number>();
+  for (const entry of entries) { if (ids.has(entry.taskId)) denied.push(`duplicate task id ${entry.taskId}`); ids.set(entry.taskId, entry.version); }
+
+  if (denied.length) {
+    console.log(JSON.stringify({ code: "SUITE_PUBLICATION_DENIED", denied }));
+    process.exitCode = 1;
+    return true;
+  }
+  const sorted = [...entries].sort((left, right) => left.taskId.localeCompare(right.taskId));
+  const manifestChecksum = `sha256:${createHash("sha256").update(JSON.stringify(sorted)).digest("hex")}`;
+  const suite = {
+    schemaVersion: 1, suiteId: options["--id"], version, type: options["--type"] as "benchmark" | "regression",
+    manifestChecksum, publishedAt: new Date().toISOString(), tasks: sorted,
+    extensions: { taskCount: sorted.length },
+  };
+  const validation = validateContractDocument(suite, "suite");
+  if (!validation.valid) throw new Error(`Suite is invalid: ${JSON.stringify(validation.errors).slice(0, 400)}`);
+  const out = resolve(process.cwd(), options["--out"]);
+  if (existsSync(out)) {
+    const existing = JSON.parse(readFileSync(out, "utf8")) as { manifestChecksum?: string; version?: number };
+    // Published Suites are immutable: the same version may only be rewritten with an identical manifest.
+    if (existing.version === version && existing.manifestChecksum !== manifestChecksum) {
+      console.log(JSON.stringify({ code: "SUITE_PUBLICATION_DENIED", denied: [`suite ${options["--id"]} v${version} already published with a different manifest checksum`] }));
+      process.exitCode = 1;
+      return true;
+    }
+  }
+  writeFileSync(out, `${JSON.stringify(suite, null, 2)}\n`);
+  console.log(JSON.stringify(suite));
+  return true;
 }
 
 /** `reference:<name>` selects `<bundle>/references/<name>/src` (e.g. gold, alternative, mutations/drop-search-handler). */
@@ -806,6 +895,8 @@ try {
   } else if (command === "batch" && inputPath && await batchTask(inputPath, extraArguments)) {
     // Handled above.
   } else if (command === "compare" && compareRuns([...(inputPath ? [inputPath] : []), ...extraArguments])) {
+    // Handled above.
+  } else if (command === "suite" && inputPath === "publish" && publishSuite(extraArguments)) {
     // Handled above.
   } else {
     printUsage();

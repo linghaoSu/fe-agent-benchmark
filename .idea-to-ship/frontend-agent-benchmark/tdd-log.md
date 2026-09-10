@@ -627,3 +627,11 @@
 - Green: unit gates V6.1-001/002; real Docker: batch 2×gold + 2×noop then
   compare → gold success@2 = 2 (all@k), noop 0 (any@k false), functional
   means 1 vs < 1, gold stability agreement 1.
+- V6.2 Suite publication: `pnpm eval suite publish --id --version --type
+  --task … --out` validates every task, requires gold + alternative + ≥1
+  mutation with expectations and a hidden bundle, scans public and hidden text
+  for credential patterns and symlinks, rejects duplicate ids and bundle-
+  checksum overlap, refuses to rewrite a published version with a different
+  manifest, and emits a schema-valid Suite. `datasets/suites/mvp-regression.json`
+  published with react-orders-filter-017. Gate V6.2-001 covers accept /
+  duplicate / incomplete / republish.

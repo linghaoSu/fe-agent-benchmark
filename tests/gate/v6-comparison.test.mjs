@@ -73,3 +73,22 @@ test("GATE-V6.1-Docker: batch two seeds each of gold and noop, then compare", { 
     assert.deepEqual(report.extensions.stability.gold, { agreement: 1, distinctConclusions: 1 });
   } finally { removeTree(root); }
 });
+
+test("GATE-V6.2-001: suite publication gates reject incomplete tasks and checksum overlap, accept the MVP task", () => {
+  const root = mkdtempSync(join(tmpdir(), "fab-suite-"));
+  try {
+    const good = cli("suite", "publish", "--id", "t", "--version", "1", "--type", "regression", "--task", task, "--out", join(root, "suite.json"));
+    assert.equal(good.status, 0, good.stderr || good.stdout);
+    const suite = JSON.parse(readFileSync(join(root, "suite.json"), "utf8"));
+    assert.equal(suite.tasks.length, 1); assert.match(suite.manifestChecksum, /^sha256:[a-f0-9]{64}$/);
+    // Same task twice = duplicate id and identical bundle checksum → denied.
+    const dup = cli("suite", "publish", "--id", "t", "--version", "2", "--type", "regression", "--task", task, "--task", task, "--out", join(root, "dup.json"));
+    assert.equal(dup.status, 1); assert.match(JSON.parse(dup.stdout).denied.join("\n"), /shares a bundle checksum|duplicate task id/);
+    // A task without references cannot be published.
+    const incomplete = cli("suite", "publish", "--id", "t", "--version", "3", "--type", "regression", "--task", new URL("../fixtures/projects/node-min", import.meta.url).pathname, "--out", join(root, "inc.json"));
+    assert.equal(incomplete.status, 1); assert.match(JSON.parse(incomplete.stdout).denied.join("\n"), /references\/gold\/expected.json missing/);
+    // Republishing the same version with a different manifest is refused.
+    const clash = cli("suite", "publish", "--id", "t", "--version", "1", "--type", "regression", "--task", task, "--out", join(root, "suite.json"));
+    assert.equal(clash.status, 0);
+  } finally { removeTree(root); }
+});

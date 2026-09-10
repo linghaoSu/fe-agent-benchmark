@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "mvp-regression",
+  "version": 1,
+  "type": "regression",
+  "manifestChecksum": "sha256:039ab652dee3057f4d998d99d8e853f90043c07aebb067724490282f61991963",
+  "publishedAt": "2026-09-10T11:21:09.805Z",
+  "tasks": [
+    {
+      "taskId": "react-orders-filter-017",
+      "version": 1,
+      "bundleChecksum": "sha256:25ee88416a99224342717b93dfb79822e1328cb48b7fb43e008b3d593973379e"
+    }
+  ],
+  "extensions": {
+    "taskCount": 1
+  }
+}
