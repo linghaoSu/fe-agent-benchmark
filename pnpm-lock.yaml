@@ -96,6 +96,24 @@ importers:
         specifier: workspace:*
         version: link:../evaluator-core
 
+  packages/evaluator-playwright:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+
+  packages/evaluator-start:
+    dependencies:
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@frontend-agent-benchmark/evaluator-core':
+        specifier: workspace:*
+        version: link:../evaluator-core
+
   packages/export-policy:
     dependencies:
       '@frontend-agent-benchmark/contracts':
@@ -125,6 +143,12 @@ importers:
       '@frontend-agent-benchmark/evaluator-integrity':
         specifier: workspace:*
         version: link:../evaluator-integrity
+      '@frontend-agent-benchmark/evaluator-playwright':
+        specifier: workspace:*
+        version: link:../evaluator-playwright
+      '@frontend-agent-benchmark/evaluator-start':
+        specifier: workspace:*
+        version: link:../evaluator-start
       '@frontend-agent-benchmark/sandbox-docker':
         specifier: workspace:*
         version: link:../sandbox-docker

@@ -18,6 +18,8 @@
     "@frontend-agent-benchmark/evaluator-build": "workspace:*",
     "@frontend-agent-benchmark/evaluator-core": "workspace:*",
     "@frontend-agent-benchmark/evaluator-integrity": "workspace:*",
+    "@frontend-agent-benchmark/evaluator-start": "workspace:*",
+    "@frontend-agent-benchmark/evaluator-playwright": "workspace:*",
     "@frontend-agent-benchmark/sandbox-docker": "workspace:*",
     "@frontend-agent-benchmark/state-store-sqlite": "workspace:*",
     "@frontend-agent-benchmark/tool-router": "workspace:*"

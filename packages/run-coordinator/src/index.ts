@@ -42,9 +42,11 @@ import {
   type WorkspaceRunner,
 } from "@frontend-agent-benchmark/tool-router";
 import { digestFrozenSnapshot } from "@frontend-agent-benchmark/artifact-store-fs";
-import { EvaluatorPipeline } from "@frontend-agent-benchmark/evaluator-core";
+import { EvaluatorPipeline, type EvaluatorPlugin } from "@frontend-agent-benchmark/evaluator-core";
 import { IntegrityEvaluator } from "@frontend-agent-benchmark/evaluator-integrity";
 import { BuildEvaluator } from "@frontend-agent-benchmark/evaluator-build";
+import { StartEvaluator } from "@frontend-agent-benchmark/evaluator-start";
+import { PlaywrightEvaluator } from "@frontend-agent-benchmark/evaluator-playwright";
 import { DockerSandboxRuntime } from "@frontend-agent-benchmark/sandbox-docker";
 
 export interface PhaseContext {
@@ -352,6 +354,8 @@ export class PipelineEvaluationPhase implements EvaluationPhase {
     patch: (context: EvaluationPhaseContext) => string;
     policy: { writablePaths: string[]; forbiddenPaths: string[]; allowDependencyChanges: boolean };
     commands: Partial<Record<"install" | "typecheck" | "lint" | "test" | "build", string>>;
+    app?: { command: string; port: number };
+    hiddenBundlePath?: string;
   }) {}
   async run(context: EvaluationPhaseContext): Promise<FrontendAgentEvaluatorResult[]> {
     const snapshot = this.options.snapshotPath(context);
@@ -368,13 +372,16 @@ export class PipelineEvaluationPhase implements EvaluationPhase {
       const digest = digestFrozenSnapshot(snapshot, ["snapshot-manifest.json"]);
       const expected = context.snapshotDigest;
       if (digest !== expected) throw new RunCoordinatorError("SNAPSHOT_DIGEST_CHANGED", "Frozen submission snapshot changed");
-      const pipeline = new EvaluatorPipeline([
+      const plugins: EvaluatorPlugin[] = [
         new IntegrityEvaluator({ patch: this.options.patch(context), policy: this.options.policy }),
         new BuildEvaluator({ commands: this.options.commands, run: async (command) => {
           try { return { exitCode: 0, stdout: await runtime!.run("run_command", { command }), stderr: "" }; }
           catch (error) { return { exitCode: 1, stdout: "", stderr: summary(error, "Build command failed") }; }
         } }),
-      ]);
+      ];
+      if (this.options.app) plugins.push(new StartEvaluator({ command: this.options.app.command, port: this.options.app.port, start: () => runtime!.startApp(this.options.app!.command, this.options.app!.port) }));
+      if (this.options.app && this.options.hiddenBundlePath) plugins.push(new PlaywrightEvaluator({ hiddenBundlePath: this.options.hiddenBundlePath, port: this.options.app.port, run: (script) => runtime!.runPlaywright(script) }));
+      const pipeline = new EvaluatorPipeline(plugins);
       const output = await pipeline.run({
         ...context, snapshotDigest: expected,
         assertSnapshot: async () => {
@@ -634,8 +641,11 @@ export class RunExecutor {
     const evaluations = this.attemptEvaluation.get(attempt.attemptId) ?? [];
     const integrity = evaluations.find((result) => result.evaluatorId === "integrity");
     const build = evaluations.find((result) => result.evaluatorId === "build");
+    const functional = evaluations.find((result) => result.evaluatorId === "functional");
     const valid = integrity ? integrity.status === "passed" : true;
-    const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed");
+    const required = JSON.parse(run.resolvedInputJson) as { evaluation?: { requiredGates?: { criticalFunctionalTests?: boolean } } };
+    const functionalGate = functional?.status === "passed" ? "passed" : functional?.status === "failed" ? "failed" : "skipped";
+    const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed") && (!required.evaluation?.requiredGates?.criticalFunctionalTests || functionalGate === "passed");
     const efficiency = this.attemptEfficiency.get(attempt.attemptId);
     const evidenceRefs = evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`));
     const score = { value: build?.status === "passed" ? 1 : 0, evidenceRefs: build?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs };
@@ -650,7 +660,7 @@ export class RunExecutor {
       evidenceRefs: { valid: evidenceRefs, solved: evidenceRefs },
       scores: {
         build: score,
-        functional: { value: 0, evidenceRefs }, visual: { value: 0, evidenceRefs }, responsive: { value: 0, evidenceRefs }, accessibility: { value: 0, evidenceRefs }, engineering: { value: 0, evidenceRefs },
+        functional: { value: functional?.outcome.score ?? 0, evidenceRefs: functional?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs }, visual: { value: 0, evidenceRefs }, responsive: { value: 0, evidenceRefs }, accessibility: { value: 0, evidenceRefs }, engineering: { value: 0, evidenceRefs },
       },
       efficiency: {
         inputTokens: 0,
@@ -660,7 +670,7 @@ export class RunExecutor {
         wallTimeSeconds: efficiency?.wallTimeSeconds ?? 0,
         costUsd: 0,
       },
-      extensions: { executionClassification: attempt.executionClassification, gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: "not_evaluated" } },
+      extensions: { executionClassification: attempt.executionClassification, gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: functionalGate } },
     };
     if (!validateContractDocument(result, "result").valid) {
       throw new RunCoordinatorError("RESULT_INVALID", "Canonical Result is invalid");

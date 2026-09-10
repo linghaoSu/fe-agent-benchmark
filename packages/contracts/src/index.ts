@@ -146,8 +146,11 @@ export interface PreflightedTaskBundle {
     forbiddenPaths: string[];
     allowDependencyChanges: boolean;
   };
-  commands: { install: string; typecheck: string; lint: string; test: string; build: string };
+  commands: { install: string; typecheck: string; lint: string; test: string; build: string; start: string };
   buildOutputPaths: string[];
+  appPort?: number;
+  hiddenBundle?: string;
+  criticalFunctionalTests: boolean;
   dependencyLockHash: string;
   dependencyCacheSnapshotId: string;
   mockApi?: { image: string; command: string[]; port: number };
@@ -816,7 +819,7 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     || !permissions.forbiddenPaths.every((value) => typeof value === "string")
     || typeof permissions.allowDependencyChanges !== "boolean"
     || !isRecord(commands)
-    || !["install", "typecheck", "lint", "test", "build"].every((name) => typeof commands[name] === "string")
+    || !["install", "typecheck", "lint", "test", "build", "start"].every((name) => typeof commands[name] === "string")
     || typeof snapshot.lockfileHash !== "string"
     || typeof snapshot.dependencyCacheSnapshotId !== "string"
     || typeof snapshot.imageDigest !== "string"
@@ -841,8 +844,11 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
       forbiddenPaths: permissions.forbiddenPaths,
       allowDependencyChanges: permissions.allowDependencyChanges,
     },
-    commands: { install: commands.install as string, typecheck: commands.typecheck as string, lint: commands.lint as string, test: commands.test as string, build: commands.build as string },
+    commands: { install: commands.install as string, typecheck: commands.typecheck as string, lint: commands.lint as string, test: commands.test as string, build: commands.build as string, start: commands.start as string },
     buildOutputPaths: isRecord(evaluation) && Array.isArray(evaluation.buildOutputPaths) ? evaluation.buildOutputPaths.filter((value): value is string => typeof value === "string") : [],
+    ...(isRecord(evaluation) && isRecord(evaluation.app) && typeof evaluation.app.port === "number" ? { appPort: evaluation.app.port } : {}),
+    ...(isRecord(evaluation) && typeof evaluation.hiddenBundle === "string" ? { hiddenBundle: evaluation.hiddenBundle } : {}),
+    criticalFunctionalTests: isRecord(evaluation) && isRecord(evaluation.requiredGates) && evaluation.requiredGates.criticalFunctionalTests === true,
     dependencyLockHash: snapshot.lockfileHash,
     dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId,
     proxyConfigurationHash: snapshot.proxyConfigurationHash,

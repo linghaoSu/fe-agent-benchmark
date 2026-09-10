@@ -27,6 +27,7 @@ export const NETWORK_POLICY_VIOLATION = "NETWORK_POLICY_VIOLATION";
 export const DEPENDENCY_PROXY_UNAVAILABLE = "DEPENDENCY_PROXY_UNAVAILABLE";
 export const WORKSPACE_WRITABLE_PATH_INVALID = "WORKSPACE_WRITABLE_PATH_INVALID";
 export const DEFAULT_PINNED_NODE_IMAGE = "node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2";
+export const DEFAULT_PINNED_PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.59.1-noble@sha256:b0ab6f3cb99aa7803adbc14d9027ec1785fc6e433b97e134e0f8fe61683b6b53";
 
 const PINNED_IMAGE = /@sha256:[a-f0-9]{64}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
@@ -378,6 +379,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     forbiddenPaths?: string[];
     buildOutputPaths?: string[];
     services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
+    excludedBundlePaths?: string[];
+    playwrightImage?: string;
     resources?: Partial<SandboxResources>;
     commandTimeoutMs?: number;
   }) {
@@ -390,6 +393,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     this.buildOutputPrefixes = validateWritablePaths(options.buildOutputPaths ?? []);
     this.resources = { ...DEFAULT_RESOURCES, ...options.resources };
     this.services = options.services;
+    this.excludedBundlePaths = options.excludedBundlePaths ?? [];
+    this.playwrightImage = options.playwrightImage ?? DEFAULT_PINNED_PLAYWRIGHT_IMAGE;
     if (
       !Number.isSafeInteger(this.resources.memoryBytes) || this.resources.memoryBytes <= 0
       || !Number.isFinite(this.resources.cpus) || this.resources.cpus <= 0
@@ -399,6 +404,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
   }
 
   private readonly services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
+  private readonly excludedBundlePaths: string[];
+  private readonly playwrightImage: string;
 
   async start(context: SandboxAttemptContext): Promise<void> {
     if (!PINNED_IMAGE.test(this.imageReference)) {
@@ -452,12 +459,12 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     }
 
     try {
-      if (this.services?.mockApi || this.services?.packageProxy) {
+      {
         state.networkId = await this.client.createNetwork({
           name: networkNameForAttempt(context.attemptId), internal: true,
           labels: { "frontend-agent-benchmark.attempt": context.attemptId },
         });
-        for (const [alias, service] of Object.entries({ "mock-api": this.services.mockApi, "package-proxy": this.services.packageProxy })) {
+        for (const [alias, service] of Object.entries({ "mock-api": this.services?.mockApi, "package-proxy": this.services?.packageProxy })) {
           if (!service) continue;
           const id = await this.client.createContainer({
             name: `${containerNameForAttempt(context.attemptId)}-${alias}`,
@@ -491,6 +498,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         workdir: "/workspace",
         networkMode: state.networkId ?? "none",
         ...(state.networkId ? { dns: ["127.0.0.1"], extraHosts: state.serviceHosts } : {}),
+        ...(state.networkId ? { networkAliases: ["app"] } : {}),
         ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
@@ -552,6 +560,28 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     return result.stdout + result.stderr;
   }
 
+  /** Starts the evaluated app and probes it from within its internal network. */
+  async startApp(command: string, port: number, timeoutMs = 30_000): Promise<{ log: string; ready: boolean }> {
+    const state = this.activeState();
+    const start = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/workspace", command: ["sh", "-lc", `(${command}) >/tmp/fab-start.log 2>&1 & echo $!`] });
+    if (start.exitCode !== 0) return { log: start.stdout + start.stderr, ready: false };
+    const probe = `const d=Date.now()+${timeoutMs};(async()=>{for(;;){try{const r=await fetch('http://app:${port}/api/health');if(r.ok)process.exit(0)}catch{}if(Date.now()>d)process.exit(1);await new Promise(r=>setTimeout(r,200))}})()`;
+    const ready = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/tmp", command: ["node", "-e", probe] });
+    const log = await this.client.execContainer(state.containerId!, { user: "1000:1000", workdir: "/tmp", command: ["sh", "-lc", "cat /tmp/fab-start.log 2>/dev/null || true"] });
+    return { log: log.stdout + log.stderr, ready: ready.exitCode === 0 };
+  }
+
+  /** Runs opaque host-supplied code inside an isolated browser container; no host mount is used. */
+  async runPlaywright(input: string): Promise<DockerExecResult> {
+    const state = this.activeState();
+    if (!state.networkId || !PINNED_IMAGE.test(this.playwrightImage)) throw new SandboxDockerError(SANDBOX_IMAGE_UNAVAILABLE, "Pinned Playwright image is unavailable");
+    const image = await this.client.inspectImage(this.playwrightImage);
+    if (!image) throw new SandboxDockerError(SANDBOX_IMAGE_UNAVAILABLE, `Pinned Playwright image is unavailable: ${this.playwrightImage}`);
+    const id = await this.client.createContainer({ name: `${containerNameForAttempt(this.activeAttemptId!)}-playwright`, image: this.playwrightImage, user: "1001:1001", workdir: "/tmp", networkMode: state.networkId, readOnlyRootfs: true, noNewPrivileges: true, resources: this.resources, mounts: [], tmpfs: ["/tmp:rw,nosuid,nodev,noexec,mode=1777"] });
+    try { await this.client.startContainer(id); return await this.client.execContainer(id, { user: "1001:1001", workdir: "/tmp", command: ["node", "-e", "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>Function('require',s)(require))"], input }); }
+    finally { await this.client.removeContainer(id); }
+  }
+
   async capturePatch(context: SandboxAttemptContext): Promise<string> {
     const state = this.states.get(context.attemptId);
     if (!state) throw new SandboxDockerError(SANDBOX_PATCH_CAPTURE_FAILED, "Attempt workspace is unavailable");
@@ -559,8 +589,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const base = join(patchRoot, "base");
     const current = join(patchRoot, "current");
     try {
-      cpSync(this.bundlePath, base, { recursive: true });
-      cpSync(this.bundlePath, current, { recursive: true });
+      this.copyPublicBundle(base);
+      this.copyPublicBundle(current);
       for (const mount of [...state.writableMounts].sort((left, right) => left.prefix.localeCompare(right.prefix))) {
         const target = join(current, ...mount.prefix.split("/"));
         rmSync(target, { recursive: true, force: true });
@@ -629,7 +659,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     if (!state) throw new SandboxDockerError(SANDBOX_PATCH_CAPTURE_FAILED, "Attempt workspace is unavailable");
     const current = join(state.temporaryRoot, "snapshot-current");
     try {
-      cpSync(this.bundlePath, current, { recursive: true });
+      this.copyPublicBundle(current);
       for (const mount of state.writableMounts) {
         const target = join(current, ...mount.prefix.split("/"));
         rmSync(target, { recursive: true, force: true });
@@ -676,7 +706,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const temporaryRoot = mkdtempSync(join(tmpdir(), `${containerNameForAttempt(attemptId)}-`));
     try {
       const publicBundle = join(temporaryRoot, "bundle");
-      cpSync(this.bundlePath, publicBundle, { recursive: true });
+      this.copyPublicBundle(publicBundle);
       const writableMounts = this.writablePrefixes.map((prefix, index) => {
         const source = join(temporaryRoot, "writable", String(index));
         copyDirectory(join(this.bundlePath, ...prefix.split("/")), source);
@@ -694,7 +724,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
           }
         }
       };
-      const protectedMounts = this.forbiddenPrefixes.map((prefix, index) => {
+      const protectedMounts = this.forbiddenPrefixes.filter((prefix) => !this.excludedBundlePaths.some((excluded) => prefix === excluded || prefix.startsWith(`${excluded}/`))).map((prefix, index) => {
         const source = join(temporaryRoot, "protected", String(index));
         copyDirectory(join(this.bundlePath, ...prefix.split("/")), source);
         ensureNestedTarget(prefix);
@@ -706,6 +736,11 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
       rmSync(temporaryRoot, { recursive: true, force: true });
       throw error;
     }
+  }
+
+  private copyPublicBundle(target: string): void {
+    cpSync(this.bundlePath, target, { recursive: true });
+    for (const path of this.excludedBundlePaths) rmSync(join(target, ...path.split("/")), { recursive: true, force: true });
   }
 
   private activeState(): AttemptState {

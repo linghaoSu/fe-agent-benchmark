@@ -1,5 +1,14 @@
 # TDD Log — frontend-agent-benchmark
 
+## 2026-09-10 — V4.2a start and hidden functional evaluator red → green
+
+- Red: V4.1 had no post-build application lifecycle or functional gate; its
+  aggregation could only report `not_evaluated`.
+- Green: `GATE-V4.2a-001..004` cover bounded start timeout/skipping, sanitized
+  functional scoring, hidden-bundle mount exclusion, and passed/failed/skipped
+  aggregation. Docker acceptance cases cover `build-pass` and `functional-break`.
+- This host cannot access OrbStack, so Docker cases skipped as `DOCKER_UNAVAILABLE`.
+
 ## 2026-09-09 — V4.1 evaluator coverage red → green
 
 - Red: `GATE-V4.1-006` showed a schema-valid evaluator result could cite a

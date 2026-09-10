@@ -67,6 +67,10 @@ export type FrontendAgentEvaluationTask = {
       "engineering": number;
     };
     "buildOutputPaths"?: Array<string>;
+    "app"?: {
+      "port": number;
+    };
+    "hiddenBundle"?: string;
   };
   "extensions"?: Record<string, unknown>;
 };

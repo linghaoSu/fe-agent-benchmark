@@ -1,5 +1,19 @@
 # Implementation Log — frontend-agent-benchmark
 
+## 2026-09-10 — V4.2a app start and host-only functional evaluation
+
+- Added the `start` evaluator after build. It launches the declared command in
+  the evaluation container, probes `http://app:<port>/api/health` from that
+  internal network, records `build/start.log`, and fails as `START_TIMEOUT`.
+- Added an opaque-spec Playwright evaluator in a separate non-root, read-only,
+  tmpfs browser container on the same internal network. The browser image is
+  pinned to `mcr.microsoft.com/playwright:v1.59.1-noble@sha256:b0ab6f3cb99aa7803adbc14d9027ec1785fc6e433b97e134e0f8fe61683b6b53`.
+- `evaluator/` is removed before every Agent mount and frozen snapshot; hidden
+  test source remains host-only. Functional artifacts contain sanitized JSON
+  outcomes and maintainer-only raw browser output.
+- Aggregation now reports functional gate state and score, and requires a
+  passing critical functional gate when the Task requires it.
+
 ## 2026-09-09 — V3.3 phase barrier and immutable snapshot
 
 - The Agent boundary records a maintainer-only process census, materializes a

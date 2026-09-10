@@ -17,7 +17,7 @@ environment:
 budget: { maxWallTimeSeconds: 60, maxAgentSteps: 4, maxCostUsd: 0 }
 permissions:
   writablePaths: [src/**]
-  forbiddenPaths: [scripts/**]
+  forbiddenPaths: [scripts/**, evaluator/**]
   allowDependencyChanges: false
 commands:
   install: npm ci --ignore-scripts
@@ -30,5 +30,7 @@ evaluation:
   requiredGates: { integrity: true, build: true, criticalFunctionalTests: true }
   weights: { functional: 1, visual: 0, responsive: 0, accessibility: 0, engineering: 0 }
   buildOutputPaths: [dist/**, node_modules/**]
+  app: { port: 3000 }
+  hiddenBundle: evaluator/hidden
 extensions:
   dependencyCacheSnapshot: dependency-cache-snapshot.json

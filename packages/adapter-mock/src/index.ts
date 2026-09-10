@@ -32,9 +32,11 @@ const scenario = process.argv[2]
       toolRequests: [{ toolCallId: "docker-unsafe", tool: "run_command", arguments: { command: "ln -s /etc/passwd evil; mkfifo pipe", cwd: "src" } }],
       patch: "",
     } : process.argv[2] === "--build-pass" ? {
-      toolRequests: [{ toolCallId: "build-pass", tool: "write_file", arguments: { path: "src/index.mjs", content: "export const value = 2;\n" } }], patch: "",
+      toolRequests: [{ toolCallId: "build-pass", tool: "write_file", arguments: { path: "src/index.mjs", content: "import { createServer } from 'node:http';\nexport const value = 2;\nconst server=createServer((q,s)=>{if(q.url==='/api/health'){s.setHeader('content-type','application/json');return s.end(JSON.stringify({ok:true}));}s.setHeader('content-type','text/html');s.end('<h1 data-testid=\"title\">node-min</h1>');});\nif(process.argv[1]&&new URL(`file://${process.argv[1]}`).href===import.meta.url)server.listen(process.env.PORT||3000);\n" } }], patch: "",
     } : process.argv[2] === "--build-break" ? {
       toolRequests: [{ toolCallId: "build-break", tool: "write_file", arguments: { path: "src/index.mjs", content: "export const value = 0;\n" } }], patch: "",
+    } : process.argv[2] === "--functional-break" ? {
+      toolRequests: [{ toolCallId: "functional-break", tool: "write_file", arguments: { path: "src/index.mjs", content: "import { createServer } from 'node:http';\nexport const value = 2;\nconst server=createServer((q,s)=>{if(q.url==='/api/health'){s.setHeader('content-type','application/json');return s.end(JSON.stringify({ok:true}));}s.setHeader('content-type','text/html');s.end('<h1 data-testid=\"title\">wrong</h1>');});\nif(process.argv[1]&&new URL(`file://${process.argv[1]}`).href===import.meta.url)server.listen(process.env.PORT||3000);\n" } }], patch: "",
     } : process.argv[2] === "--forbidden-write" ? {
       toolRequests: [{ toolCallId: "forbidden-write", tool: "write_file", arguments: { path: "scripts/check.mjs", content: "process.exit(1);\n" } }], patch: "diff --git a/scripts/check.mjs b/scripts/check.mjs\n--- a/scripts/check.mjs\n+++ b/scripts/check.mjs\n@@ -1 +1 @@\n-process.exit(0);\n+process.exit(1);\n",
     } : JSON.parse(readFileSync(process.argv[2], "utf8"))) as {

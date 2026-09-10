@@ -57,7 +57,7 @@ const usage = [
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
   "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|forbidden-write] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
@@ -182,7 +182,7 @@ function createRun(arguments_: string[]): boolean {
     seed,
     budgets: metadata.budgets,
     permissions: metadata.permissions,
-    evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths },
+    evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths, appPort: metadata.appPort, hiddenBundle: metadata.hiddenBundle, requiredGates: { criticalFunctionalTests: metadata.criticalFunctionalTests } },
     sandbox: {
       runner: sandboxRunner,
       imageReference,
@@ -350,7 +350,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
-      && !["docker-unsafe", "build-pass", "build-break", "forbidden-write"].includes(parsed.options["--mock-scenario"] as string))
+      && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write"].includes(parsed.options["--mock-scenario"] as string))
     || (parsed.options["--evaluators"] !== undefined && parsed.options["--evaluators"] !== "noop" && parsed.options["--evaluators"] !== "pipeline")
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
@@ -366,7 +366,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     const resolved = JSON.parse(storedRun.resolvedInputJson) as {
       adapterProtocol?: { maxFrameBytes: number; heartbeatTimeoutSeconds: number };
       permissions?: { writablePaths: string[]; forbiddenPaths: string[]; allowDependencyChanges: boolean };
-      evaluation?: { commands: { install: string; typecheck: string; lint: string; test: string; build: string }; buildOutputPaths: string[] };
+      evaluation?: { commands: { install: string; typecheck: string; lint: string; test: string; build: string; start: string }; buildOutputPaths: string[]; appPort?: number; hiddenBundle?: string; requiredGates?: { criticalFunctionalTests?: boolean } };
       budgets?: { maxWallTimeSeconds: number };
       sandbox?: {
         runner: "fake" | "docker";
@@ -398,7 +398,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           bundlePath: task.path,
           writablePaths: resolved.permissions?.writablePaths ?? [],
           forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [],
-          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [],
+          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], excludedBundlePaths: resolved.evaluation?.hiddenBundle ? [resolved.evaluation.hiddenBundle.split("/")[0]!] : [],
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
           services: resolved.services,
@@ -440,6 +440,8 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
       },
       policy: { writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], allowDependencyChanges: resolved.permissions?.allowDependencyChanges ?? false },
       commands: resolved.evaluation?.commands ?? {},
+      app: resolved.evaluation?.appPort ? { command: resolved.evaluation.commands.start, port: resolved.evaluation.appPort } : undefined,
+      hiddenBundlePath: resolved.evaluation?.hiddenBundle ? join(task.path, resolved.evaluation.hiddenBundle) : undefined,
     }) : new NoopEvaluator();
     const run = await new RunExecutor({
       store,
