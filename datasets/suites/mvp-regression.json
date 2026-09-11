@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "suiteId": "mvp-regression",
-  "version": 5,
+  "version": 6,
   "type": "regression",
-  "manifestChecksum": "sha256:4b689de26df5f77eb541eee523ca473caa86d5c33f526b278e4a578546d18020",
-  "publishedAt": "2026-09-11T05:04:57.447Z",
+  "manifestChecksum": "sha256:c005b29158536fc0c51952db5c0de653119ed9de5e04ab7e3fd91e09ac45ba32",
+  "publishedAt": "2026-09-11T09:44:28.135Z",
   "tasks": [
     {
       "taskId": "react-cart-quantity-021",
@@ -19,7 +19,7 @@
     {
       "taskId": "react-hooks-refactor-109",
       "version": 1,
-      "bundleChecksum": "sha256:68061fda19f7a03f0d14e45435bdef79b04f4e5b898204dcc7b0bba677af1ba1"
+      "bundleChecksum": "sha256:bf1660724b8f5ed1e140120f017c8fbe829830b0f3b43fceba62b37be58d09e9"
     },
     {
       "taskId": "react-orders-filter-017",

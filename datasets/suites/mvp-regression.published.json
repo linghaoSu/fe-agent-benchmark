@@ -6,5 +6,9 @@
   "5": {
     "manifestChecksum": "sha256:4b689de26df5f77eb541eee523ca473caa86d5c33f526b278e4a578546d18020",
     "publishedAt": "2026-09-11T05:04:57.447Z"
+  },
+  "6": {
+    "manifestChecksum": "sha256:c005b29158536fc0c51952db5c0de653119ed9de5e04ab7e3fd91e09ac45ba32",
+    "publishedAt": "2026-09-11T09:44:28.135Z"
   }
 }
