@@ -135,7 +135,7 @@ export interface PreflightedTaskBundle {
   version: number;
   schemaVersion: number;
   environmentImage: string;
-  imageDigest: string;
+  imageDigest?: string;
   budgets: {
     maxWallTimeSeconds: number;
     maxAgentSteps: number;
@@ -156,12 +156,16 @@ export interface PreflightedTaskBundle {
   weights: { functional: number; visual: number; responsive: number; accessibility: number; engineering: number };
   visualMismatchThreshold?: number;
   criticalFunctionalTests: boolean;
-  dependencyLockHash: string;
-  dependencyCacheSnapshotId: string;
+  network: TaskNetwork;
+  /** Snapshot-derived; absent for `network: open` Tasks, which install from the public registry. */
+  dependencyLockHash?: string;
+  dependencyCacheSnapshotId?: string;
+  proxyConfigurationHash?: string;
   mockApi?: { image: string; command: string[]; port: number };
   packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory?: string };
-  proxyConfigurationHash: string;
 }
+
+export type TaskNetwork = "controlled-proxy" | "open";
 
 export function writablePathPrefixes(patterns: string[]): string[] | undefined {
   const prefixes: string[] = [];
@@ -459,6 +463,8 @@ interface LockedPackage {
   name: string;
   version: string;
   integrity: string;
+  resolved?: string;
+  location: string;
 }
 
 type LockResult =
@@ -579,7 +585,11 @@ function readPnpmLock(path: string, file: string): LockResult {
       );
     }
 
-    packages.push({ name: parsedId[0], version: parsedId[1], integrity: resolution.integrity });
+    packages.push({
+      name: parsedId[0], version: parsedId[1], integrity: resolution.integrity,
+      ...(typeof resolution.tarball === "string" ? { resolved: resolution.tarball } : {}),
+      location: `${packageLocation}/resolution/tarball`,
+    });
   }
 
   return { packages: packages.sort((left, right) => {
@@ -626,7 +636,11 @@ function readNpmLock(path: string, file: string): LockResult {
       );
     }
 
-    packages.push({ name, version: value.version, integrity: value.integrity });
+    packages.push({
+      name, version: value.version, integrity: value.integrity,
+      ...(typeof value.resolved === "string" ? { resolved: value.resolved } : {}),
+      location: `${packageLocation}/resolved`,
+    });
   }
 
   return { packages: packages.sort((left, right) => {
@@ -695,6 +709,38 @@ export function preflightTaskBundle(bundlePath: string): PreflightResult {
   const snapshotReference = isRecord(extensions)
     ? extensions.dependencyCacheSnapshot
     : undefined;
+  if (isRecord(environment) && environment.network === "open") {
+    // Without a proxy snapshot nothing else pins the runtime: the image must carry its digest and the Task
+    // must not declare a proxy it cannot use.
+    if (typeof environment.image !== "string" || !/@sha256:[0-9a-f]{64}$/.test(environment.image)) {
+      return reject({
+        code: "DEPENDENCY_LOCK_INVALID",
+        file: taskFile,
+        location: "/environment/image",
+        message: "Open-network Tasks must pin environment.image by sha256 digest",
+      });
+    }
+    if (environment.packageProxy !== undefined) {
+      return reject({
+        code: "DEPENDENCY_LOCK_INVALID",
+        file: taskFile,
+        location: "/environment/packageProxy",
+        message: "Open-network Tasks must not declare a package proxy",
+      });
+    }
+    // Every tarball must come from a TLS registry URL plus its integrity. pnpm omits `tarball` for registry
+    // packages (integrity-only resolution), which is equally pinned.
+    const unpinned = lock.packages.find((value) => value.resolved !== undefined ? !value.resolved.startsWith("https://") : manager !== "pnpm");
+    if (unpinned) {
+      return reject({
+        code: "DEPENDENCY_LOCK_INVALID",
+        file: lockFile,
+        location: unpinned.location,
+        message: `Package ${unpinned.name}@${unpinned.version} must resolve to an https:// registry URL`,
+      });
+    }
+    return scanBundleForCredentials(bundlePath);
+  }
   if (typeof snapshotReference !== "string" || !snapshotReference) {
     return reject({
       code: "DEPENDENCY_CACHE_MISS",
@@ -765,6 +811,10 @@ export function preflightTaskBundle(bundlePath: string): PreflightResult {
     });
   }
 
+  return scanBundleForCredentials(bundlePath);
+}
+
+function scanBundleForCredentials(bundlePath: string): PreflightResult {
   for (const filePath of sortedBundleFiles(bundlePath)) {
     if (!TEXT_EXTENSIONS.has(extname(filePath).toLowerCase())) continue;
 
@@ -807,19 +857,26 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
   const commands = task.commands;
   const evaluation = task.evaluation;
   const extensions = task.extensions;
+  const network = isRecord(environment) ? environment.network : undefined;
   const snapshotReference = isRecord(extensions)
     ? extensions.dependencyCacheSnapshot
     : undefined;
-  if (!isRecord(budgets) || typeof snapshotReference !== "string") {
+  if (
+    !isRecord(budgets)
+    || (network !== "controlled-proxy" && network !== "open")
+    || (network === "controlled-proxy" && typeof snapshotReference !== "string")
+  ) {
     throw new Error("Preflighted Task metadata is invalid");
   }
 
-  const loadedSnapshot = loadDocument(resolve(bundlePath, snapshotReference));
-  if ("error" in loadedSnapshot || !isRecord(loadedSnapshot.document)) {
-    throw new Error("Preflighted dependency cache snapshot is unavailable");
+  let snapshot: Record<string, unknown> | undefined;
+  if (typeof snapshotReference === "string") {
+    const loadedSnapshot = loadDocument(resolve(bundlePath, snapshotReference));
+    if ("error" in loadedSnapshot || !isRecord(loadedSnapshot.document)) {
+      throw new Error("Preflighted dependency cache snapshot is unavailable");
+    }
+    snapshot = loadedSnapshot.document;
   }
-
-  const snapshot = loadedSnapshot.document;
   if (
     typeof task.id !== "string"
     || typeof task.version !== "number"
@@ -837,10 +894,12 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     || typeof permissions.allowDependencyChanges !== "boolean"
     || !isRecord(commands)
     || !["install", "typecheck", "lint", "test", "build", "start"].every((name) => typeof commands[name] === "string")
-    || typeof snapshot.lockfileHash !== "string"
-    || typeof snapshot.dependencyCacheSnapshotId !== "string"
-    || typeof snapshot.imageDigest !== "string"
-    || typeof snapshot.proxyConfigurationHash !== "string"
+    || (snapshot && (
+      typeof snapshot.lockfileHash !== "string"
+      || typeof snapshot.dependencyCacheSnapshotId !== "string"
+      || typeof snapshot.imageDigest !== "string"
+      || typeof snapshot.proxyConfigurationHash !== "string"
+    ))
   ) {
     throw new Error("Preflighted Task Bundle metadata is invalid");
   }
@@ -850,7 +909,7 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     version: task.version,
     schemaVersion: task.schemaVersion,
     environmentImage: environment.image,
-    imageDigest: snapshot.imageDigest,
+    ...(snapshot ? { imageDigest: snapshot.imageDigest as string } : {}),
     budgets: {
       maxWallTimeSeconds: budgets.maxWallTimeSeconds,
       maxAgentSteps: budgets.maxAgentSteps,
@@ -876,9 +935,12 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
     ...(isRecord(evaluation) && isRecord(evaluation.visual) && typeof evaluation.visual.mismatchThreshold === "number"
       ? { visualMismatchThreshold: evaluation.visual.mismatchThreshold } : {}),
     criticalFunctionalTests: isRecord(evaluation) && isRecord(evaluation.requiredGates) && evaluation.requiredGates.criticalFunctionalTests === true,
-    dependencyLockHash: snapshot.lockfileHash,
-    dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId,
-    proxyConfigurationHash: snapshot.proxyConfigurationHash,
+    network,
+    ...(snapshot ? {
+      dependencyLockHash: snapshot.lockfileHash as string,
+      dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId as string,
+      proxyConfigurationHash: snapshot.proxyConfigurationHash as string,
+    } : {}),
     ...(isRecord(environment.mockApi)
       && typeof environment.mockApi.image === "string"
       && Array.isArray(environment.mockApi.command)

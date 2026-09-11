@@ -4,7 +4,7 @@ export type FrontendAgentNetworkPolicy = {
   "networkPolicyId": string;
   "version": number;
   "phase": "agent" | "evaluation";
-  "defaultAction": "deny";
+  "defaultAction": "deny" | "allow";
   "allowedDestinations": Array<{
       "destinationId": string;
       "kind": "mock_api" | "application" | "browser_controller" | "package_proxy";

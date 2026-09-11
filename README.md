@@ -42,11 +42,13 @@
 - 每个任务必须可复现、可版本化、可重复运行。
 - Benchmark 与 Regression Suite 分开管理。
 - 评测结果保留分项向量，不只保留单一总分。
+- 沙箱不再隔离网络：任务声明 `environment.network: open` 时允许外网访问（全部 10 个数据集任务），
+  依赖来自真实 npm registry 并由 lockfile integrity 锁定；`controlled-proxy` 模式仍保留给离线任务。
 
 ## 当前状态（2026-09-11）
 
 V0–V6 已实现：合同与 Schema、SQLite Run/Attempt 状态机、Adapter stdio 协议与 Mock Adapter、
-Tool Router、Docker 沙箱（默认拒绝网络、受控依赖代理、阶段屏障、不可变快照）、
+Tool Router、Docker 沙箱（每 Attempt 独立网络、阶段屏障、不可变快照；`controlled-proxy` 模式下默认拒绝网络并走受控依赖代理）、
 Integrity / Build / Start / 隐藏 Playwright 功能 / 视觉 / 响应式 / 可访问性 / 工程 评测器、
 Gold / Alternative / Mutation 校准、确定性重复比较、seed 批次与 success@k 对比、
 Suite 发布门禁，以及 10 个已校准任务（`datasets/tasks/`，D8 分布，`datasets/suites/mvp-regression.json`）。
@@ -54,14 +56,19 @@ Suite 发布门禁，以及 10 个已校准任务（`datasets/tasks/`，D8 分�
 V7.1：第一个真实 Agent Adapter（`packages/adapter-opencode`，通过 OpenCode CLI 接任意 provider/model），
 已用 `rundao/public/kimi-k3` 在 react-orders-filter-017 上跑出 solved=true。
 
+V7.2：沙箱开放网络。`environment.network: open` 的任务在非 internal 的每 Attempt 网络中运行，不再有依赖代理与
+依赖缓存快照；10 个数据集任务已全部切换为 `open`。`controlled-proxy` 继续服务 `tests/fixtures` 中的离线任务。
+
 ## 环境要求
 
 - Node 26（使用 `node:sqlite`）、pnpm 10。
 - Docker（OrbStack 或 Docker Desktop）。沙箱镜像按 digest 固定：
   `node:22-alpine@sha256:16e22a55…` 与 `mcr.microsoft.com/playwright:v1.59.1-noble@sha256:b0ab6f3c…`；
   若被本地清理，`docker pull <ref@digest>` 即可（Run 会以 `SANDBOX_IMAGE_UNAVAILABLE` 明确失败）。
-- 所有依赖离线：任务的 npm 包来自 `tests/fixtures/package-proxy/tarballs`，浏览器库来自
-  `tests/fixtures/playwright-runtime`。沙箱内没有任何外网访问。
+- 网络：`environment.network: open` 的任务（全部数据集任务）在沙箱内可访问外网，`npm ci` 直接从真实
+  npm registry 安装，并依赖 lockfile 的 integrity 锁定版本与内容；结果只在相同网络模式的 Run 之间可比。
+  `controlled-proxy` 任务仍完全离线，npm 包来自 `tests/fixtures/package-proxy/tarballs`。
+- 浏览器库始终从 `tests/fixtures/playwright-runtime` 挂载，两种模式都不会在沙箱内下载浏览器。
 
 ## 快速开始
 

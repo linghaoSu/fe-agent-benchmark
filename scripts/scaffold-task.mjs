@@ -1,5 +1,5 @@
 // Copies the infrastructure files of react-orders-filter-017 into a new task bundle so every MVP task shares the
-// same offline React runtime, server, scripts, lockfile and proxy fixtures. Authors then fill src/, tests/, README,
+// same React runtime (installed from the public registry via the pinned lockfile), server and scripts. Authors then fill src/, tests/, README,
 // evaluator/hidden/functional.spec.mjs and references/.
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,8 +10,8 @@ const source = "datasets/tasks/react-orders-filter-017";
 const target = join("datasets/tasks", id);
 if (existsSync(target)) { console.error(`${target} exists`); process.exit(1); }
 mkdirSync(join(target, "src"), { recursive: true });
-for (const file of ["index.html", "server.mjs", "package-lock.json", "dependency-cache-snapshot.json"]) cpSync(join(source, file), join(target, file));
-for (const dir of ["scripts", "fixtures"]) cpSync(join(source, dir), join(target, dir), { recursive: true });
+for (const file of ["index.html", "server.mjs", "package-lock.json"]) cpSync(join(source, file), join(target, file));
+for (const dir of ["scripts"]) cpSync(join(source, dir), join(target, dir), { recursive: true });
 const pkg = JSON.parse(readFileSync(join(source, "package.json"), "utf8")); pkg.name = id;
 writeFileSync(join(target, "package.json"), `${JSON.stringify(pkg)}\n`);
 let task = readFileSync(join(source, "task.yaml"), "utf8");

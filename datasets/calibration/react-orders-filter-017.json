@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "taskId": "react-orders-filter-017",
   "taskVersion": 1,
-  "bundleChecksum": "sha256:25ee88416a99224342717b93dfb79822e1328cb48b7fb43e008b3d593973379e",
-  "createdAt": "2026-09-11T02:18:51.741Z",
+  "bundleChecksum": "sha256:2e58987bb017ffad25734c5b5fa754b2c91dcb3a419043b7c63f3d3fdf808d89",
+  "createdAt": "2026-09-11T15:56:51.678Z",
   "entries": [
     {
       "reference": "alternative",
-      "runId": "28da9357-462c-4b5b-b237-13b3097c6ee6",
+      "runId": "a73fc31c-6ad7-403d-82da-8dfbc496edad",
       "kind": "alternative",
       "expected": {
         "valid": true,
@@ -67,7 +67,7 @@
     },
     {
       "reference": "gold",
-      "runId": "380187e4-c51d-454a-94ee-5633b7bdea5d",
+      "runId": "64c65cfc-93dc-478a-97b1-2ae12e5ab5e8",
       "kind": "gold",
       "expected": {
         "valid": true,
@@ -129,7 +129,7 @@
     },
     {
       "reference": "mutations/drop-search-handler",
-      "runId": "464d0019-1b4a-4f26-ad77-d06fc7aeef73",
+      "runId": "322b3043-f792-45e6-9522-1ec0a7b6e64f",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -178,7 +178,7 @@
     },
     {
       "reference": "mutations/force-overflow",
-      "runId": "47a9faab-fd35-4999-9db1-749f51aab889",
+      "runId": "60aacf44-8c53-40e2-bc2a-4809a9038bf9",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -227,7 +227,7 @@
     },
     {
       "reference": "mutations/remove-aria",
-      "runId": "bcd1b51b-421e-486b-8aac-4c3261430d91",
+      "runId": "2545eceb-adea-49b5-866c-7f2133e91b6b",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -279,7 +279,7 @@
     },
     {
       "reference": "mutations/remove-empty-state",
-      "runId": "ff3d8616-f60e-461d-8a66-d9f48c8deb80",
+      "runId": "f2d7190b-8fd4-4ba5-beb6-3dc3cebf60c2",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -328,7 +328,7 @@
     },
     {
       "reference": "mutations/stale-request-overwrite",
-      "runId": "18831bf0-c6e5-424d-9e7d-6eafaec57681",
+      "runId": "82506785-7962-450f-ba94-2d4c41c97122",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -377,7 +377,7 @@
     },
     {
       "reference": "mutations/wrong-status-param",
-      "runId": "998f61de-cce5-42fd-9063-79a1e336729a",
+      "runId": "52b6cdf7-600e-425d-8f6c-b4e6ec13dc44",
       "kind": "mutation",
       "expected": {
         "solved": false,

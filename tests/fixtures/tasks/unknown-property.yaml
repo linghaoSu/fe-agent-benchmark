@@ -9,7 +9,7 @@ environment:
   packageManager: pnpm
   locale: en-US
   timezone: UTC
-  network: disabled
+  network: controlled-proxy
 budget:
   maxWallTimeSeconds: 1
   maxAgentSteps: 1

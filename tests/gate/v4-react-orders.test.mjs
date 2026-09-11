@@ -16,18 +16,19 @@ const unavailable = daemon.error || daemon.status !== 0 ? `DOCKER_UNAVAILABLE: $
 function cli(...args) { return spawnSync("pnpm", ["eval", ...args], { cwd: repoRoot, encoding: "utf8", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 }); }
 function json(result) { assert.equal(result.status, 0, result.stderr || result.stdout); return JSON.parse(result.stdout); }
 
-test("GATE-V4.2b-001: react orders bundle validates with only vendored proxy dependencies", () => {
+test("GATE-V4.2b-001: react orders bundle validates with registry-resolved, integrity-pinned dependencies", () => {
   assert.equal(cli("validate", `${task.pathname}/task.yaml`).status, 0);
   assert.equal(cli("checksum", task.pathname).status, 0);
   const lock = JSON.parse(readFileSync(join(task.pathname, "package-lock.json"), "utf8"));
+  // The integrity ledger of the vendored tarballs is the ground truth the registry URLs must agree with.
   const available = new Map(readFileSync(integrity, "utf8").trim().split("\n").map((line) => line.split(" ")));
   for (const [location, value] of Object.entries(lock.packages)) {
     if (!location) continue;
-    assert.match(value.resolved, /^http:\/\/package-proxy:8080\//);
-    const file = value.resolved.slice("http://package-proxy:8080/".length);
-    assert.equal(value.integrity, available.get(file), location);
-    assert.equal(existsSync(join(task.pathname, "fixtures", file)), true, file);
+    const match = value.resolved.match(/^https:\/\/registry\.npmjs\.org\/.+\/-\/(.+\.tgz)$/);
+    assert.ok(match, `${location}: ${value.resolved}`);
+    assert.equal(value.integrity, available.get(match[1]), location);
   }
+  assert.equal(existsSync(join(task.pathname, "fixtures")), false);
 });
 
 test("GATE-V4.2b-002: private evaluator and gold reference are absent from the Agent public copy", async () => {

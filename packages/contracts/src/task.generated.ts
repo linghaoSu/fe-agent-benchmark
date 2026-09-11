@@ -17,7 +17,7 @@ export type FrontendAgentEvaluationTask = {
     "packageManager": string;
     "locale": string;
     "timezone": string;
-    "network": string;
+    "network": "controlled-proxy" | "open";
     "mockApi"?: {
       "image": string;
       "command": Array<string>;

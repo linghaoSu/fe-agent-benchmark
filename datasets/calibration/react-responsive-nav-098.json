@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "taskId": "react-responsive-nav-098",
   "taskVersion": 1,
-  "bundleChecksum": "sha256:3d1a0895562f83c34b0ea01cfc70484f6866d10a9ac8220225799a7ee8bac4e2",
-  "createdAt": "2026-09-11T02:43:49.125Z",
+  "bundleChecksum": "sha256:a2f77de373ccafd2e648c29c7e9b1dc7e1c0967d62ed62ee531f86f91eac48c1",
+  "createdAt": "2026-09-11T16:04:42.113Z",
   "entries": [
     {
       "reference": "alternative",
-      "runId": "740bc93f-b05a-4622-aa98-0a26df4f2fb9",
+      "runId": "26e38068-cc95-4a65-88ab-6d9350f0c1b1",
       "kind": "alternative",
       "expected": {
         "valid": true,
@@ -67,7 +67,7 @@
     },
     {
       "reference": "gold",
-      "runId": "bc2a352f-c975-4b75-82d0-07848e0e28e2",
+      "runId": "6b88a3bd-4575-4c16-abd5-58eab0c0befe",
       "kind": "gold",
       "expected": {
         "valid": true,
@@ -127,7 +127,7 @@
     },
     {
       "reference": "mutations/cards-fixed-width",
-      "runId": "f77089e7-20af-45fe-8564-790dec7b6a9f",
+      "runId": "4e3a6e17-1ac9-4367-9fc4-6cb5ad45da08",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -176,7 +176,7 @@
     },
     {
       "reference": "mutations/nav-no-collapse",
-      "runId": "1bc5108c-4a3f-484e-81a1-5515355e6f77",
+      "runId": "d23f110a-f1f6-42e3-867b-3b07c217b4be",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -225,7 +225,7 @@
     },
     {
       "reference": "mutations/no-aria-expanded",
-      "runId": "4e4dfbb6-c528-449b-8e35-4e6bc0fb8555",
+      "runId": "7572f5de-b3c6-4a78-8984-ccf93eda0737",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -274,7 +274,7 @@
     },
     {
       "reference": "mutations/remove-toggle-label",
-      "runId": "277a6b92-5a7b-4461-a9f3-c04f6be22b79",
+      "runId": "9f489b5d-1be1-4f6b-b677-9da0865c4691",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -326,7 +326,7 @@
     },
     {
       "reference": "mutations/toggle-does-nothing",
-      "runId": "cea39b9a-4ede-45c0-8718-f279dce9edb9",
+      "runId": "c761f6ea-ed81-47d8-8e99-c84e428e8fd4",
       "kind": "mutation",
       "expected": {
         "solved": false,

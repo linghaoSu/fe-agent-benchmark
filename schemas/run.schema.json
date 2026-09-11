@@ -13,8 +13,6 @@
     "seedSet",
     "budgets",
     "adapterProtocol",
-    "dependencyLockHash",
-    "dependencyCacheSnapshotId",
     "networkPolicyVersion",
     "exportPolicyVersion",
     "dataScanCoveragePolicyVersion",
@@ -245,11 +243,17 @@
       "additionalProperties": false
     },
     "dependencyLockHash": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "dependencyCacheSnapshotId": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "networkPolicyVersion": {

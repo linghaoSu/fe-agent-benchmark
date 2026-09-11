@@ -94,8 +94,7 @@
           "minLength": 1
         },
         "network": {
-          "type": "string",
-          "minLength": 1
+          "enum": ["controlled-proxy", "open"]
         },
         "mockApi": {
           "type": "object",

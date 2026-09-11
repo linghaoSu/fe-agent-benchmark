@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "taskId": "react-sort-bug-087",
   "taskVersion": 1,
-  "bundleChecksum": "sha256:32bdacc50f8a6fdc81247a8bdb7e98d385a58a1be5bb78e9e9669b0e1808f104",
-  "createdAt": "2026-09-11T02:39:26.939Z",
+  "bundleChecksum": "sha256:349fd4060789fe055adcd0df793ac4887c05795407fad63b74da31e919a65212",
+  "createdAt": "2026-09-11T16:12:14.361Z",
   "entries": [
     {
       "reference": "alternative",
-      "runId": "318dce84-32d5-4276-b905-38b36962fdab",
+      "runId": "060c8067-4146-4ed6-947e-e5e54a00f457",
       "kind": "alternative",
       "expected": {
         "valid": true,
@@ -67,7 +67,7 @@
     },
     {
       "reference": "gold",
-      "runId": "107461eb-0ed7-4a2c-b41f-38e5eda16e55",
+      "runId": "09083b86-3625-4caa-8dcc-09125e7a0646",
       "kind": "gold",
       "expected": {
         "valid": true,
@@ -127,7 +127,7 @@
     },
     {
       "reference": "mutations/aria-sort-never-set",
-      "runId": "f9bb7174-a155-425f-bd1b-19c4e67dff4f",
+      "runId": "9f0b65f3-5941-4756-ace3-25d497dd9f11",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -176,7 +176,7 @@
     },
     {
       "reference": "mutations/mutate-source",
-      "runId": "911c0a4f-b26e-4dd3-8e33-640075355b70",
+      "runId": "27961309-df49-4863-a55a-608734e5dcc1",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -225,7 +225,7 @@
     },
     {
       "reference": "mutations/remove-header-names",
-      "runId": "2f57339d-2811-4366-b0b9-039f2fa637f6",
+      "runId": "f575d444-c04f-442b-87fd-83266fa2a5cb",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -277,7 +277,7 @@
     },
     {
       "reference": "mutations/string-compare-salary",
-      "runId": "56f1b823-9109-4aef-959e-04f4215da246",
+      "runId": "588113b9-adcc-4200-b905-72fcdfef80d1",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -326,7 +326,7 @@
     },
     {
       "reference": "mutations/unstable-sort",
-      "runId": "0b64db03-25e6-4668-9c1b-ee4b7df86d66",
+      "runId": "4fc2a7c5-93a1-4a96-b002-10cc87025e40",
       "kind": "mutation",
       "expected": {
         "solved": false,

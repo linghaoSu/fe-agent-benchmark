@@ -761,3 +761,40 @@ Re-run of react-form-validation-065 (seed 2): build passes; Kimi genuinely
 fails `empty-submit-shows-all-errors` (its `confirm !== password` treats two
 empty fields as matching, so only 3 of 4 errors render). Result 9/10 solved,
 per-task 13–26k input / 1–4k output tokens, 60–135 s wall.
+
+## 2026-09-11 — V7.2 open-network sandbox
+
+### Scope and decisions
+
+- Owner decision: the sandbox no longer isolates the network. A second mode
+  `environment.network: open` is added; `controlled-proxy` keeps working for
+  the existing fixtures and gates (node-min etc.).
+- Schema: `environment.network` becomes the enum `[controlled-proxy, open]` (it was a free string); legacy fixture values `disabled`/`default-deny` were rewritten to `controlled-proxy`.
+- Contracts preflight: `open` tasks need no dependency-cache-snapshot; the
+  requirement remains for `controlled-proxy`.
+- sandbox-docker: `open` creates the per-Attempt network without
+  `--internal`, starts no `package-proxy`, and keeps read-only rootfs,
+  `no-new-privileges`, resource limits and the `app` alias.
+- run-coordinator: network policy `defaultAction: allow` for `open`; the mode
+  is recorded in the immutable Run input.
+- CLI wiring passes the task's network mode through Run creation/execution.
+- Dataset: all 10 tasks in `datasets/tasks/` converted to `open`
+  (lockfiles resolve to the real npm registry with integrity pinning;
+  fixtures/ removed).
+- adapter-opencode: third install path for the agent's self-verification —
+  when neither `--node-modules` nor `--fixtures` is available and the scratch
+  has a `package-lock.json`, run online `npm ci --ignore-scripts --no-audit
+  --no-fund` (180 s timeout, cache inside the scratch, removed afterwards) and
+  emit `opencode_install` with exit code and stderr tail. `installOffline`
+  stays for controlled-proxy bundles.
+- New gates: GATE-V7.2-001, GATE-V7.2-002 and a real-Docker gate for the open
+  mode.
+- Docs: README (环境要求 / 核心原则 / 当前状态) and
+  `architecture.revision.md` (dated section recording the decision, kept
+  guarantees and accepted consequences).
+
+### Verification
+
+- `tsc -p packages/adapter-opencode/tsconfig.json` passes.
+- Adversarial review (3 lenses) surfaced and we fixed: GATE-V4.2b-001 still asserting proxy URLs; scaffold-task copying deleted fixtures; open-mode preflight not pinning the image (now requires `@sha256:` digest) and not rejecting `packageProxy`; pnpm lockfiles rejected in open mode; `compare` fingerprint ignoring network mode; adapter falling back to online install for controlled-proxy bundles (now gated on `--network open`); run.schema allowing null lock hash / snapshot id.
+- Verification: GATE-V7.2-001/002/Docker 3/3 (Docker gate: real `npm ci` against registry.npmjs.org inside the sandbox, solved with gold, network-policy defaultAction allow, network absent after cleanup); v0 contract gates, v3 network/proxy gates, v6 comparison, v7 adapter gates green; all 10 tasks recalibrated against the open-network bundles and suite republished as v7.

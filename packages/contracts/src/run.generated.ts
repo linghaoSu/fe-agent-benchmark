@@ -49,8 +49,8 @@ export type FrontendAgentEvaluationRun = {
     "maxFrameBytes": number;
     "heartbeatTimeoutSeconds": number;
   };
-  "dependencyLockHash": string;
-  "dependencyCacheSnapshotId": string;
+  "dependencyLockHash"?: string | null;
+  "dependencyCacheSnapshotId"?: string | null;
   "networkPolicyVersion": number;
   "exportPolicyVersion": number;
   "dataScanCoveragePolicyVersion": number;

@@ -431,8 +431,8 @@ function compareRuns(arguments_: string[]): boolean {
         };
       });
       // Samples in one configuration must be comparable: same Task version and environment, distinct seeds.
-      const inputs = runIds.map((runId) => { const run = store.runs.find(runId)!; const resolved = JSON.parse(run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string }; return { runId, taskId: run.taskId, taskVersion: run.taskVersion, imageDigest: resolved.sandbox?.imageDigest, snapshot: resolved.dependencyCacheSnapshotId, seed: run.seedSet[0] }; });
-      const fingerprints = new Set(inputs.map((i) => `${i.taskId}@${i.taskVersion}|${i.imageDigest ?? ""}|${i.snapshot ?? ""}`));
+      const inputs = runIds.map((runId) => { const run = store.runs.find(runId)!; const resolved = JSON.parse(run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string; network?: string }; return { runId, taskId: run.taskId, taskVersion: run.taskVersion, imageDigest: resolved.sandbox?.imageDigest, snapshot: resolved.dependencyCacheSnapshotId, network: resolved.network, seed: run.seedSet[0] }; });
+      const fingerprints = new Set(inputs.map((i) => `${i.taskId}@${i.taskVersion}|${i.imageDigest ?? ""}|${i.snapshot ?? ""}|${i.network ?? ""}`));
       if (fingerprints.size !== 1) throw new Error(`--config ${configurationId} mixes Runs of different tasks or environments: ${[...fingerprints].join(" vs ")}`);
       if (new Set(inputs.map((i) => i.seed)).size !== inputs.length) throw new Error(`--config ${configurationId} repeats a seed; repeated seeds are not independent samples`);
       return { configurationId, runs };
@@ -679,6 +679,7 @@ function createRun(arguments_: string[]): boolean {
     dependencyCacheSnapshotId: metadata.dependencyCacheSnapshotId,
     proxyConfigurationHash: metadata.proxyConfigurationHash,
     networkPolicyId: `network-policy:${checksum.bundleChecksum}`,
+    network: metadata.network,
     services: {
       ...(metadata.mockApi ? { mockApi: metadata.mockApi } : {}),
       ...(metadata.packageProxy ? { packageProxy: metadata.packageProxy } : {}),
@@ -709,8 +710,8 @@ function createRun(arguments_: string[]): boolean {
       bundleChecksum: checksum.bundleChecksum,
       seedSet: [seed],
       budgetsJson: JSON.stringify(metadata.budgets),
-      dependencyLockHash: metadata.dependencyLockHash,
-      dependencyCacheSnapshotId: metadata.dependencyCacheSnapshotId,
+      dependencyLockHash: metadata.dependencyLockHash ?? null,
+      dependencyCacheSnapshotId: metadata.dependencyCacheSnapshotId ?? null,
       createdAt,
       transitionReason: "preflight passed",
     });
@@ -852,6 +853,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
         imageReference: string;
         resources: { memoryBytes: number; cpus: number; pidsLimit: number };
       };
+      network?: "controlled-proxy" | "open";
       services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory: string } };
     };
     const protocol = resolved.adapterProtocol;
@@ -881,6 +883,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
           services: resolved.services,
+          network: resolved.network,
         })
       : undefined;
     const agentCommand = parsed.options["--agent"] === "opencode"
@@ -890,8 +893,9 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             new URL("../../../packages/adapter-opencode/dist/index.js", import.meta.url).pathname,
             "--model", parsed.options["--model"] as string,
             "--node-modules", join(task.path, "node_modules"),
-            "--fixtures", join(task.path, "fixtures"),
+            ...(resolved.network === "open" ? [] : ["--fixtures", join(task.path, "fixtures")]),
             "--max-runtime-ms", String((resolved.budgets?.maxWallTimeSeconds ?? 900) * 1_000 - 60_000),
+            "--network", resolved.network ?? "controlled-proxy",
             ...(typeof parsed.options["--variant"] === "string" ? ["--variant", parsed.options["--variant"] as string] : []),
           ],
           // OpenCode needs its own config/auth and the PATH to find `opencode`; nothing task-specific leaks in.
@@ -943,7 +947,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     const evaluator = evaluatorMode === "pipeline" ? new PipelineEvaluationPhase({
       artifacts,
       snapshotPath: (context) => `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/snapshot`,
-      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services, playwrightRuntimePath: PLAYWRIGHT_RUNTIME_PATH, appNetwork: Boolean(resolved.evaluation?.appPort) }),
+      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services, network: resolved.network, playwrightRuntimePath: PLAYWRIGHT_RUNTIME_PATH, appNetwork: Boolean(resolved.evaluation?.appPort) }),
       // An Attempt with no workspace changes stages no patch.diff; integrity then evaluates an empty patch.
       patch: (context) => {
         const path = `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/patch.diff`;

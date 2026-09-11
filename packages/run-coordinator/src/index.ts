@@ -779,20 +779,22 @@ export class RunExecutor {
         this.store.attempts.setAgentNetworkId(attempt.attemptId, networkId);
         const resolved = JSON.parse(this.store.runs.find(attempt.runId)!.resolvedInputJson) as {
           networkPolicyId?: string;
+          network?: "controlled-proxy" | "open";
           services?: { mockApi?: { port: number }; packageProxy?: { port: number } };
         };
+        const open = resolved.network === "open";
         const policy = {
           schemaVersion: 1,
           networkPolicyId: resolved.networkPolicyId ?? `network-policy:${attempt.attemptId}`,
           version: 1,
           phase: "agent",
-          defaultAction: "deny",
+          defaultAction: open ? "allow" : "deny",
           allowedDestinations: [
             ...(resolved.services?.mockApi ? [{ destinationId: "mock-api", kind: "mock_api", alias: "mock-api", port: resolved.services.mockApi.port }] : []),
             ...(resolved.services?.packageProxy ? [{ destinationId: "package-proxy", kind: "package_proxy", alias: "package-proxy", port: resolved.services.packageProxy.port }] : []),
           ],
           violationCode: "NETWORK_POLICY_VIOLATION",
-          extensions: { agentNetworkId: networkId, deniedCategories: ["host_gateway", "loopback", "lan", "public_dns", "internet"] },
+          extensions: { agentNetworkId: networkId, deniedCategories: open ? [] : ["host_gateway", "loopback", "lan", "public_dns", "internet"] },
         };
         if (!validateContractDocument(policy, "network-policy").valid) {
           throw new RunCoordinatorError("NETWORK_POLICY_INVALID", "Resolved network policy is invalid");

@@ -1,60 +1,60 @@
 {
   "schemaVersion": 1,
   "suiteId": "mvp-regression",
-  "version": 6,
+  "version": 7,
   "type": "regression",
-  "manifestChecksum": "sha256:c005b29158536fc0c51952db5c0de653119ed9de5e04ab7e3fd91e09ac45ba32",
-  "publishedAt": "2026-09-11T09:44:28.135Z",
+  "manifestChecksum": "sha256:c9038c6ac2170536d6bda513cc397449f2e3951b5b4771efbbd03488b6bd1faf",
+  "publishedAt": "2026-09-11T16:20:09.563Z",
   "tasks": [
     {
       "taskId": "react-cart-quantity-021",
       "version": 1,
-      "bundleChecksum": "sha256:f73f846b192c300903cce704d83de407643e2293b5ecd595f749d5205455458c"
+      "bundleChecksum": "sha256:5416a2d51b38a5ea3a2dc8621022e9957b6aaa7ac072111d60e345149bb484b0"
     },
     {
       "taskId": "react-form-validation-065",
       "version": 1,
-      "bundleChecksum": "sha256:5965d73519f27f381ab48396f321c9be10c4fb4eb67d287212a40356a048e894"
+      "bundleChecksum": "sha256:15ac831f819638a91adc77572558ce3ccbd6af3ba405d50467a8e769049e8307"
     },
     {
       "taskId": "react-hooks-refactor-109",
       "version": 1,
-      "bundleChecksum": "sha256:bf1660724b8f5ed1e140120f017c8fbe829830b0f3b43fceba62b37be58d09e9"
+      "bundleChecksum": "sha256:0a4535cbe359d8ce106f70522dba0a6d0336a3269c56ee84e2d83b8f21993d8f"
     },
     {
       "taskId": "react-orders-filter-017",
       "version": 1,
-      "bundleChecksum": "sha256:25ee88416a99224342717b93dfb79822e1328cb48b7fb43e008b3d593973379e"
+      "bundleChecksum": "sha256:2e58987bb017ffad25734c5b5fa754b2c91dcb3a419043b7c63f3d3fdf808d89"
     },
     {
       "taskId": "react-pagination-bug-076",
       "version": 1,
-      "bundleChecksum": "sha256:9e44c843ebd4ddfd6b3461d79ff7d643f6a6906511aede1b03f19182ba046673"
+      "bundleChecksum": "sha256:934df7bbcd959b538c7a04f9345ef4d1e98a4de769bd370cefaba7b0abeae4e8"
     },
     {
       "taskId": "react-responsive-nav-098",
       "version": 1,
-      "bundleChecksum": "sha256:3d1a0895562f83c34b0ea01cfc70484f6866d10a9ac8220225799a7ee8bac4e2"
+      "bundleChecksum": "sha256:a2f77de373ccafd2e648c29c7e9b1dc7e1c0967d62ed62ee531f86f91eac48c1"
     },
     {
       "taskId": "react-search-debounce-043",
       "version": 1,
-      "bundleChecksum": "sha256:9c929b291a9025a9153db5bcc461d3d6b9dcfacf41a2a4576eabeb1ffbce6052"
+      "bundleChecksum": "sha256:0c5c03acad56e633f63f8c78102b70a359d1bf2cd3b65600345d265791917f3b"
     },
     {
       "taskId": "react-sort-bug-087",
       "version": 1,
-      "bundleChecksum": "sha256:32bdacc50f8a6fdc81247a8bdb7e98d385a58a1be5bb78e9e9669b0e1808f104"
+      "bundleChecksum": "sha256:349fd4060789fe055adcd0df793ac4887c05795407fad63b74da31e919a65212"
     },
     {
       "taskId": "react-tabs-keyboard-054",
       "version": 1,
-      "bundleChecksum": "sha256:29026b49df6bb5e658d88a846a5fd8f65bd7c3ffa7fdee4f08100a21b51fdc4e"
+      "bundleChecksum": "sha256:343fe843e70457b993d675ee7a5af08cdd14c97573d3dbbdc446740b066096e9"
     },
     {
       "taskId": "react-todo-toggle-bug-032",
       "version": 1,
-      "bundleChecksum": "sha256:e0944e95463c95a72f446841e98cdc1729da15ec13cd618cdb16bb604cceb2e5"
+      "bundleChecksum": "sha256:b19d783edfd61ba980312eb30291810913aea69b56154715f21a49f57ea7c1b1"
     }
   ],
   "extensions": {

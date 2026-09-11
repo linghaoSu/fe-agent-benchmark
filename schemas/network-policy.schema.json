@@ -32,7 +32,7 @@
       ]
     },
     "defaultAction": {
-      "const": "deny"
+      "enum": ["deny", "allow"]
     },
     "allowedDestinations": {
       "type": "array",

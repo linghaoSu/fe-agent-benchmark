@@ -82,7 +82,7 @@ export interface DockerContainerSpec {
   command?: string[];
 }
 
-export interface DockerNetworkSpec { name: string; internal: true; labels: Record<string, string> }
+export interface DockerNetworkSpec { name: string; internal: boolean; labels: Record<string, string> }
 
 export interface DockerExecSpec {
   command: string[];
@@ -239,7 +239,7 @@ export class DockerCliClient implements DockerClient {
   }
 
   async createNetwork(spec: DockerNetworkSpec): Promise<string> {
-    const result = spawnSync("docker", ["network", "create", "--internal", "--label", ...Object.entries(spec.labels)
+    const result = spawnSync("docker", ["network", "create", ...(spec.internal ? ["--internal"] : []), "--label", ...Object.entries(spec.labels)
       .flatMap(([key, value]) => [`${key}=${value}`]), spec.name], { encoding: "utf8", timeout: this.timeoutMs });
     if (result.status !== 0) throw commandFailure(result, "Docker network creation failed");
     return result.stdout.trim();
@@ -345,18 +345,18 @@ function fixtureDirectory(bundlePath: string, directory: string): string {
   return source;
 }
 
+// The rootfs is read-only, so npm's cache/logs must live on the /tmp tmpfs.
+const NPM_ENVIRONMENT: Record<string, string> = {
+  npm_config_cache: "/tmp/.npm",
+  npm_config_update_notifier: "false",
+  npm_config_audit: "false",
+  npm_config_fund: "false",
+  HOME: "/tmp",
+};
+
 function registryEnvironment(port: number): Record<string, string> {
   const registry = `http://package-proxy:${port}/`;
-  // The rootfs is read-only, so npm's cache/logs must live on the /tmp tmpfs.
-  return {
-    npm_config_registry: registry,
-    NPM_CONFIG_REGISTRY: registry,
-    npm_config_cache: "/tmp/.npm",
-    npm_config_update_notifier: "false",
-    npm_config_audit: "false",
-    npm_config_fund: "false",
-    HOME: "/tmp",
-  };
+  return { npm_config_registry: registry, NPM_CONFIG_REGISTRY: registry, ...NPM_ENVIRONMENT };
 }
 
 export class DockerSandboxRuntime implements WorkspaceRunner {
@@ -379,6 +379,8 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     forbiddenPaths?: string[];
     buildOutputPaths?: string[];
     services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
+    /** `open` always attaches the Attempt to a non-internal network so `npm ci` reaches the public registry. */
+    network?: "controlled-proxy" | "open";
     excludedBundlePaths?: string[];
     playwrightImage?: string;
     playwrightRuntimePath?: string;
@@ -396,6 +398,10 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     this.buildOutputPrefixes = validateWritablePaths(options.buildOutputPaths ?? []);
     this.resources = { ...DEFAULT_RESOURCES, ...options.resources };
     this.services = options.services;
+    this.network = options.network ?? "controlled-proxy";
+    if (this.network === "open" && this.services?.packageProxy) {
+      throw new SandboxDockerError(SANDBOX_START_FAILED, "An open-network Task must not declare a package proxy");
+    }
     this.excludedBundlePaths = options.excludedBundlePaths ?? [];
     this.playwrightImage = options.playwrightImage ?? DEFAULT_PINNED_PLAYWRIGHT_IMAGE;
     this.playwrightRuntimePath = options.playwrightRuntimePath;
@@ -409,6 +415,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
   }
 
   private readonly services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
+  private readonly network: "controlled-proxy" | "open";
   private readonly excludedBundlePaths: string[];
   private readonly playwrightImage: string;
   private readonly playwrightRuntimePath: string | undefined;
@@ -466,10 +473,10 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     }
 
     try {
-      // Agent containers stay on `--network none` unless the Task declares in-Run services or an app to evaluate.
-      if (this.services?.mockApi || this.services?.packageProxy || this.appNetwork) {
+      // Controlled-proxy containers stay on `--network none` unless the Task declares in-Run services or an app to evaluate.
+      if (this.network === "open" || this.services?.mockApi || this.services?.packageProxy || this.appNetwork) {
         state.networkId = await this.client.createNetwork({
-          name: networkNameForAttempt(context.attemptId), internal: true,
+          name: networkNameForAttempt(context.attemptId), internal: this.network !== "open",
           labels: { "frontend-agent-benchmark.attempt": context.attemptId },
         });
         for (const [alias, service] of Object.entries({ "mock-api": this.services?.mockApi, "package-proxy": this.services?.packageProxy })) {
@@ -505,9 +512,11 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         user: "1000:1000",
         workdir: "/workspace",
         networkMode: state.networkId ?? "none",
-        ...(state.networkId ? { dns: ["127.0.0.1"], extraHosts: state.serviceHosts } : {}),
+        // The 127.0.0.1 resolver blackholes DNS; an open network needs Docker's embedded resolver for the registry.
+        ...(state.networkId && (this.network !== "open" || this.services?.mockApi) ? { extraHosts: state.serviceHosts } : {}),
+        ...(state.networkId && this.network !== "open" ? { dns: ["127.0.0.1"] } : {}),
         ...(state.networkId && this.appNetwork ? { networkAliases: ["app"] } : {}),
-        ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : {}),
+        ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : this.network === "open" ? { environment: NPM_ENVIRONMENT } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
         resources: this.resources,

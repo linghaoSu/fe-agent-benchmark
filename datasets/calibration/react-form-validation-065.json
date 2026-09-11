@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "taskId": "react-form-validation-065",
   "taskVersion": 1,
-  "bundleChecksum": "sha256:5965d73519f27f381ab48396f321c9be10c4fb4eb67d287212a40356a048e894",
-  "createdAt": "2026-09-11T02:32:21.109Z",
+  "bundleChecksum": "sha256:15ac831f819638a91adc77572558ce3ccbd6af3ba405d50467a8e769049e8307",
+  "createdAt": "2026-09-11T15:50:49.267Z",
   "entries": [
     {
       "reference": "alternative",
-      "runId": "e4ffc802-8246-43d2-8033-a161fb185b02",
+      "runId": "d108ccf9-d755-4c6a-ad86-e3cc7ecb0d0f",
       "kind": "alternative",
       "expected": {
         "valid": true,
@@ -67,7 +67,7 @@
     },
     {
       "reference": "gold",
-      "runId": "b73bae8b-f619-4150-b045-d001751ae9c4",
+      "runId": "193a47e9-68eb-42d7-8f54-d5986874555e",
       "kind": "gold",
       "expected": {
         "valid": true,
@@ -127,7 +127,7 @@
     },
     {
       "reference": "mutations/aria-invalid-never-set",
-      "runId": "77193c94-61d6-4464-8d0e-be12b4209971",
+      "runId": "e4ad3a65-4eb4-46cc-849b-ad4451454a47",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -176,7 +176,7 @@
     },
     {
       "reference": "mutations/confirm-not-compared",
-      "runId": "3b9524de-07ef-479f-9cc9-2e65c8d4b121",
+      "runId": "5d35bb87-0c79-4908-a166-1927e3f24ea5",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -225,7 +225,7 @@
     },
     {
       "reference": "mutations/email-accepts-anything",
-      "runId": "4d0834b2-f138-4c5a-8848-6f58ade6f4e4",
+      "runId": "d9c7c01f-6f3c-4adf-a265-82ec4165b4dc",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -274,7 +274,7 @@
     },
     {
       "reference": "mutations/remove-labels",
-      "runId": "b4470852-2a1b-4ec6-94e0-e62674fd12c8",
+      "runId": "3559d429-67c4-4f2c-9337-c948535696c9",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -326,7 +326,7 @@
     },
     {
       "reference": "mutations/success-shown-despite-errors",
-      "runId": "319c59b6-4a1c-43a3-904e-8fdf775d700d",
+      "runId": "8ec85877-5323-451b-ba37-188decc91cf4",
       "kind": "mutation",
       "expected": {
         "solved": false,

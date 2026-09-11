@@ -10,6 +10,10 @@
  *
  * Known limitation (documented): commands the agent runs during its own self-verification execute on the
  * host scratch copy, not in the sandbox. Evaluation always runs in the sandbox on the tool-routed patch.
+ *
+ * Dependencies for that self-verification come from, in order: a symlinked `--node-modules`, an offline
+ * `npm ci` from `--fixtures` (controlled-proxy bundles), or — for `environment.network: open` tasks, which
+ * have neither — a normal online `npm ci` against the real registry, pinned by the lockfile's integrity hashes.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
@@ -37,10 +41,12 @@ interface Options {
   promptFile?: string;
   maxRuntimeMs: number;
   variant?: string;
+  /** Task network mode; online installs are only attempted for `open` Tasks. */
+  network: "controlled-proxy" | "open";
 }
 
 function parseOptions(argv: string[]): Options {
-  const options: Options = { model: "", opencodeBinary: process.env.OPENCODE_BINARY ?? "opencode", maxRuntimeMs: 20 * 60_000 };
+  const options: Options = { model: "", opencodeBinary: process.env.OPENCODE_BINARY ?? "opencode", maxRuntimeMs: 20 * 60_000, network: "controlled-proxy" };
   for (let index = 0; index < argv.length; index += 1) {
     const [flag, value] = [argv[index]!, argv[index + 1]];
     if (flag === "--model" && value) { options.model = value; index += 1; }
@@ -49,6 +55,7 @@ function parseOptions(argv: string[]): Options {
     else if (flag === "--prompt-file" && value) { options.promptFile = value; index += 1; }
     else if (flag === "--max-runtime-ms" && value) { options.maxRuntimeMs = Number(value); index += 1; }
     else if (flag === "--variant" && value) { options.variant = value; index += 1; }
+    else if (flag === "--network" && (value === "open" || value === "controlled-proxy")) { options.network = value; index += 1; }
   }
   if (!options.model) throw new Error("--model <provider/model> is required");
   return options;
@@ -108,7 +115,7 @@ async function readWorkspaceFile(path: string): Promise<string | undefined> {
 /** Text files the agent may edit or read: everything the sandbox exposes except dependency/build output. */
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 
-/** Binary/dependency payloads never travel through the mirror; they are served to the sandbox by the package proxy. */
+/** Binary/dependency payloads never travel through the mirror (fixtures/ only exists in controlled-proxy bundles). */
 const MIRROR_EXCLUDED = /^(fixtures|node_modules|dist)\//;
 const TEXT_EXTENSIONS = /\.(js|mjs|cjs|ts|tsx|jsx|json|yaml|yml|md|html|css|txt|svg|lock|env|mjsx)$|^[^.]+$/i;
 
@@ -182,6 +189,12 @@ function installOffline(scratch: string, fixtures: string): void {
   send("event", { name: "opencode_offline_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
+function installOnline(scratch: string): void {
+  const result = spawnSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: scratch, encoding: "utf8", timeout: 180_000, env: { ...process.env, npm_config_cache: join(scratch, ".npm-cache") } });
+  rmSync(join(scratch, ".npm-cache"), { recursive: true, force: true });
+  send("event", { name: "opencode_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
+}
+
 function buildPrompt(readme: string): string {
   if (options.promptFile) return readFileSync(options.promptFile, "utf8").replace("{{README}}", readme);
   return [
@@ -227,6 +240,9 @@ async function main(frame: AdapterFrame): Promise<void> {
       // Offline install for the agent's own self-verification: the bundle's fixtures directory is the same
       // content the sandbox package proxy serves, so `npm ci` resolves without any registry access.
       installOffline(scratch, resolve(options.fixturesSource));
+    } else if (options.network === "open" && existsSync(join(scratch, "package-lock.json"))) {
+      // Open-network tasks ship no fixtures: install from the real registry, pinned by lockfile integrity.
+      installOnline(scratch);
     }
     send("event", { name: "opencode_workspace_mirrored", data: { files: mirror.size } });
 

@@ -21,7 +21,7 @@ environment:
   packageManager: pnpm
   locale: zh-CN
   timezone: Asia/Singapore
-  network: disabled
+  network: controlled-proxy
 
 viewports:
   - name: desktop

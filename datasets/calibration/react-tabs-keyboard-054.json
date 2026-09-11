@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "taskId": "react-tabs-keyboard-054",
   "taskVersion": 1,
-  "bundleChecksum": "sha256:29026b49df6bb5e658d88a846a5fd8f65bd7c3ffa7fdee4f08100a21b51fdc4e",
-  "createdAt": "2026-09-11T02:29:25.566Z",
+  "bundleChecksum": "sha256:343fe843e70457b993d675ee7a5af08cdd14c97573d3dbbdc446740b066096e9",
+  "createdAt": "2026-09-11T16:16:20.567Z",
   "entries": [
     {
       "reference": "alternative",
-      "runId": "5980dc62-58c3-4e4d-8be4-ce4aff7e3296",
+      "runId": "638e9dd3-3c6c-4fff-a1e1-3e57598fe494",
       "kind": "alternative",
       "expected": {
         "valid": true,
@@ -67,7 +67,7 @@
     },
     {
       "reference": "gold",
-      "runId": "3eaa8be6-709f-4cb6-b0f0-1e1b442d152b",
+      "runId": "e58714a8-3440-4821-b943-1cdf53a5be2a",
       "kind": "gold",
       "expected": {
         "valid": true,
@@ -127,7 +127,7 @@
     },
     {
       "reference": "mutations/arrow-moves-focus-not-selection",
-      "runId": "a90c5d8f-92bc-49a8-8453-e20ed6c73edc",
+      "runId": "81d5d227-f3a8-4239-b461-0b7bf648cc30",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -176,7 +176,7 @@
     },
     {
       "reference": "mutations/click-does-not-update-panel",
-      "runId": "cce63288-61e1-41de-a733-f39a9d2fcfea",
+      "runId": "93b8ff4a-bb2e-4e9e-84bc-de8644128d9b",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -225,7 +225,7 @@
     },
     {
       "reference": "mutations/missing-end-key",
-      "runId": "de3360da-506f-4c25-bcd4-084926418df9",
+      "runId": "c2d6bfd4-1c3f-4e2b-906f-02896af3c037",
       "kind": "mutation",
       "expected": {
         "solved": true,
@@ -274,7 +274,7 @@
     },
     {
       "reference": "mutations/no-wraparound",
-      "runId": "24eeed33-e42f-44aa-9ea0-57e482745431",
+      "runId": "2de0039c-0d4c-4485-bf9d-39a809eca8b8",
       "kind": "mutation",
       "expected": {
         "solved": false,
@@ -323,7 +323,7 @@
     },
     {
       "reference": "mutations/remove-roles-and-labels",
-      "runId": "ecd36411-ccaa-4a3b-a020-e2a30cab0b78",
+      "runId": "3e54815e-1e16-4277-88bc-22df2a08628b",
       "kind": "mutation",
       "expected": {
         "solved": true,

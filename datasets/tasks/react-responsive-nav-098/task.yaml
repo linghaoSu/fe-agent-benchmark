@@ -9,12 +9,7 @@ environment:
   packageManager: npm
   locale: zh-CN
   timezone: Asia/Shanghai
-  network: controlled-proxy
-  packageProxy:
-    image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
-    port: 8080
-    fixtureDirectory: fixtures
-    command: [node, -e, "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>f.createReadStream(p.join('/fixtures',decodeURIComponent(q.url))).on('error',()=>{s.statusCode=404;s.end()}).pipe(s)).listen(8080)"]
+  network: open
 viewports:
   - { name: desktop, width: 1440, height: 900 }
   - { name: tablet, width: 768, height: 1024 }
@@ -38,5 +33,3 @@ evaluation:
   buildOutputPaths: [dist/**, node_modules/**]
   app: { port: 5173 }
   hiddenBundle: evaluator/hidden
-extensions:
-  dependencyCacheSnapshot: dependency-cache-snapshot.json

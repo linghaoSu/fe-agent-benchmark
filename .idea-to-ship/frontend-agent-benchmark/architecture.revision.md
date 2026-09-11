@@ -274,3 +274,32 @@ Run completed → optional requester export
 - 来源：Plannotator 人工审批。
 - 同步记录：2026-07-13 已同步到 canonical 架构与 Harness。
 - 下一步：重新进行 deep 设计评审。
+
+## 2026-09-11 修订：沙箱不再隔离网络
+
+### 决定
+
+项目负责人决定：沙箱不再隔离网络。新增 `environment.network: open` 模式，
+`controlled-proxy` 模式保留给现有测试与 fixtures（node-min 等），10 个数据集任务全部切换到 `open`。
+
+### 变更内容（open 模式语义）
+
+- 每 Attempt 仍创建独立 Docker 网络，但不再使用 `--internal`，容器可以访问外网。
+- 不再启动 `package-proxy` 容器；lockfile 直接指向真实 npm registry，`npm ci` 依赖 integrity 锁定。
+- contracts preflight 不再要求 dependency-cache-snapshot。
+- network-policy `defaultAction` 为 `allow`。
+- Run 输入中不可变地记录网络模式。
+
+### 保留内容
+
+- 只读 rootfs、`no-new-privileges`、CPU/内存/进程数资源限制。
+- 每 Attempt 独立网络及其中的 `app` 别名（评测器访问被测应用的方式不变）。
+- Playwright 浏览器运行时仍从 `tests/fixtures/playwright-runtime` 挂载。
+- `controlled-proxy` 模式的全部行为（internal 网络、package proxy、依赖缓存快照、默认拒绝）不变，供旧 fixtures 与网络门禁继续使用。
+
+### 接受的后果
+
+- 隐藏行为（隐藏评测器观察到的内容）原则上可以被被测 app 服务器外传。接受，因为 benchmark 在维护者主机上
+  对受信任的 Adapter 运行；R1/R2 中"沙箱层面保证不外传"的论证不再适用于 open 模式。
+- 依赖解析依赖 registry 可用性；由 lockfile integrity 缓解版本与内容漂移，不能缓解不可用。
+- 结果只在相同网络模式的 Run 之间可比；网络模式记录在不可变 Run 输入中，比较器应以此为分组条件。

@@ -9,7 +9,7 @@
     "packageManager": "pnpm@10",
     "locale": "en-US",
     "timezone": "UTC",
-    "network": "default-deny"
+    "network": "controlled-proxy"
   },
   "budget": {
     "maxWallTimeSeconds": 60,
