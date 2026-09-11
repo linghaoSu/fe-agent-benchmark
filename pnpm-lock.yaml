@@ -54,6 +54,12 @@ importers:
         specifier: workspace:*
         version: link:../adapter-protocol
 
+  packages/adapter-opencode:
+    dependencies:
+      '@frontend-agent-benchmark/adapter-protocol':
+        specifier: workspace:*
+        version: link:../adapter-protocol
+
   packages/adapter-protocol:
     dependencies:
       '@frontend-agent-benchmark/contracts':

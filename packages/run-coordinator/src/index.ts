@@ -67,6 +67,8 @@ export type AgentPhaseOutcome =
       events?: string;
       stderr?: string;
       efficiency?: ToolMetrics;
+      usage?: AgentUsage;
+      model?: string;
     }
   | {
       agentOutcome: Exclude<AgentOutcome, "not_started" | "completed">;
@@ -76,6 +78,8 @@ export type AgentPhaseOutcome =
       events?: string;
       stderr?: string;
       efficiency?: ToolMetrics;
+      usage?: AgentUsage;
+      model?: string;
     };
 
 export interface AgentPhase {
@@ -247,12 +251,15 @@ export class SubprocessAgentPhase implements AgentPhase {
         taskVersion: run.taskVersion,
         seed: context.seed,
       });
+      const usage = usageOf(result.completion);
       return {
         agentOutcome: "completed",
         patch: result.patch,
         events: result.eventFrames.map((frame) => JSON.stringify(frame)).join("\n") + "\n",
         stderr: result.stderr,
         efficiency: executor?.metrics(),
+        ...(usage ? { usage } : {}),
+        ...(typeof result.completion?.model === "string" ? { model: result.completion.model } : {}),
       };
     } catch (error) {
       if (!(error instanceof AdapterHostError)) throw error;
@@ -305,6 +312,17 @@ export class CancelledAgent implements AgentPhase {
       boundedSummary: "Agent execution was cancelled",
     };
   }
+}
+
+export interface AgentUsage { inputTokens: number; outputTokens: number; costUsd: number }
+
+/** Bounded, numeric-only view of an Adapter's self-reported usage; anything malformed is ignored. */
+function usageOf(completion: Record<string, unknown> | undefined): AgentUsage | undefined {
+  const usage = completion?.usage;
+  if (!usage || typeof usage !== "object") return undefined;
+  const number = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0);
+  const record = usage as Record<string, unknown>;
+  return { inputTokens: number(record.inputTokens), outputTokens: number(record.outputTokens), costUsd: number(record.costUsd) };
 }
 
 export class NoopEvaluator implements EvaluationPhase {
@@ -561,6 +579,7 @@ export class RunExecutor {
   private readonly onTransitionCommitted?: RunExecutorOptions["onTransitionCommitted"];
   private readonly attemptEfficiency = new Map<string, ToolMetrics>();
   private readonly attemptEvaluation = new Map<string, FrontendAgentEvaluatorResult[]>();
+  private readonly attemptUsage = new Map<string, AgentUsage & { model?: string }>();
 
   constructor(options: RunExecutorOptions) {
     this.store = options.store;
@@ -693,6 +712,7 @@ export class RunExecutor {
     const functionalRequired = Boolean(required.evaluation?.requiredGates?.criticalFunctionalTests) && functionalGate !== "not_evaluated";
     const solved = valid && (build ? build.status === "passed" : attempt.executionClassification === "completed") && (!functionalRequired || functionalGate === "passed");
     const efficiency = this.attemptEfficiency.get(attempt.attemptId);
+    const usage = this.attemptUsage.get(attempt.attemptId);
     const evidenceRefs = [...new Set(evaluations.flatMap((result) => result.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`)))];
     const score = { value: build?.status === "passed" ? 1 : 0, evidenceRefs: build?.evidenceRefs.map((ref) => `attempts/${attempt.ordinal}/${ref}`) ?? evidenceRefs };
     const result: FrontendAgentEvaluationResult = {
@@ -713,15 +733,16 @@ export class RunExecutor {
         engineering: { value: engineering.score.value, evidenceRefs: engineering.score.evidenceRefs ?? evidenceRefs },
       },
       efficiency: {
-        inputTokens: 0,
-        outputTokens: 0,
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
         toolCalls: efficiency?.toolCalls ?? 0,
         toolOutputBytes: efficiency?.totalToolOutputBytes ?? 0,
         wallTimeSeconds: efficiency?.wallTimeSeconds ?? 0,
-        costUsd: 0,
+        costUsd: usage?.costUsd ?? 0,
       },
       extensions: {
         executionClassification: attempt.executionClassification,
+        ...(usage?.model ? { agent: { model: usage.model } } : {}),
         gates: { integrity: integrity?.status ?? "not_evaluated", build: build?.status ?? "not_evaluated", criticalFunctionalTests: functionalGate },
         dimensions: { visual: visual.gate, responsive: responsive.gate, accessibility: accessibility.gate, engineering: engineering.gate },
         ...qualityExtension(required.evaluation?.weights, { functional: functionalGate === "passed" || functionalGate === "failed" ? functional?.outcome.score ?? 0 : undefined, visual: visual.gate === "passed" || visual.gate === "failed" ? visual.score.value : undefined, responsive: responsive.gate === "passed" || responsive.gate === "failed" ? responsive.score.value : undefined, accessibility: accessibility.gate === "passed" || accessibility.gate === "failed" ? accessibility.score.value : undefined, engineering: engineering.gate === "passed" || engineering.gate === "failed" ? engineering.score.value : undefined }),
@@ -852,6 +873,7 @@ export class RunExecutor {
     }
     if (agentOutcome.efficiency) {
       this.attemptEfficiency.set(attempt.attemptId, agentOutcome.efficiency);
+      if (agentOutcome.usage) this.attemptUsage.set(attempt.attemptId, { ...agentOutcome.usage, ...(agentOutcome.model ? { model: agentOutcome.model } : {}) });
     }
 
     const agentRecord = agentOutcome.agentOutcome === "completed"

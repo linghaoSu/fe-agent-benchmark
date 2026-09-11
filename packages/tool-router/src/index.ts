@@ -113,8 +113,11 @@ function normalizePath(value: string): string | undefined {
   return normalized;
 }
 
+/** Sentinel prefix meaning "any normalized relative path" (reads of the public workspace). */
+const ANY_PATH = "*";
+
 function within(candidate: string, prefix: string): boolean {
-  return candidate === prefix || candidate.startsWith(`${prefix}/`);
+  return prefix === ANY_PATH || candidate === prefix || candidate.startsWith(`${prefix}/`);
 }
 
 function pathAllowed(value: unknown, allowed: string[], forbidden: string[]): boolean {
@@ -159,7 +162,9 @@ export function resolveToolPolicy(input: {
   });
   return {
     allowedTools: new Set(input.allowedTools ?? DEFAULT_TOOLS),
-    readablePaths: writablePaths,
+    // The whole public workspace is readable (the hidden bundle and references are never mounted, and
+    // forbiddenPaths still apply); only writes are confined to the declared writable prefixes.
+    readablePaths: [ANY_PATH],
     writablePaths,
     forbiddenPaths,
   };

@@ -703,3 +703,44 @@
   checksum consistency + D8 distribution), V6.4-001 (reliability baseline).
 - `node --test --test-concurrency=1 tests/gate/*.test.mjs`: 177/177,
   0 skipped. `pnpm build`, `pnpm check:generated` exit 0.
+
+## 2026-09-11 — V7.1 first real Agent Adapter (OpenCode / Kimi K3)
+
+### Scope and decisions
+
+- Added `packages/adapter-opencode`: a workspace-mirror Adapter that speaks the
+  existing stdio protocol. It reads the public workspace through routed
+  `run_command`/`read_file` requests into a private host scratch, installs the
+  bundle's proxy fixtures offline so the agent can self-verify, runs
+  `opencode run --dir <scratch> -m <provider/model> --auto --pure --format json`,
+  forwards OpenCode's JSON events as bounded `event` frames (steps, tokens,
+  tool names with scratch paths relativized), then replays every changed or
+  deleted file back through `write_file` / `run_command rm` so the Tool Router
+  and the Docker workspace remain authoritative for the patch. Usage
+  (tokens/cost/model) travels in `complete.extensions` and lands in
+  `Result.efficiency` and `extensions.agent.model`.
+- CLI: `run execute --agent opencode --model <provider/model> [--variant]`;
+  `run create --budget-profile task|agent` (recorded immutably; the agent
+  profile widens wall time/steps/cost, tool output and frame limits because
+  Task budgets were sized for the scripted Mock).
+- Tool policy: the whole public workspace is now readable (`ANY_PATH`);
+  writes stay confined. Reads never reach the hidden bundle because it is
+  not mounted at all.
+- Known limitation (documented in the adapter header): the agent's own
+  self-verification commands run on the host scratch, not in the sandbox.
+  Evaluation always runs in the sandbox on the tool-routed patch.
+
+### Verification
+
+- Real model: `rundao/public/kimi-k3` on react-orders-filter-017, three
+  iterations: (1) `readablePaths` = writable prefixes → the agent saw only 3
+  files and refused; (2) mirroring `fixtures/*.tgz` inline blew the 1 MiB
+  output budget → excluded binaries, offline install from host fixtures,
+  agent-profile limits; (3) **solved=true**: functional 5/5, build 1,
+  responsive 1, a11y 1, engineering 0.83 (no test added), visual 0.25
+  (legitimately different layout from gold), 28.8k in / 8.1k out tokens,
+  15 routed tool calls, 221 s.
+- Gate V7.1-Docker drives the adapter with a fake `opencode` binary (via
+  `OPENCODE_BINARY`) that writes gold `src/` → solved, usage recorded, patch
+  contains both changed files, every tool call TOOL_SUCCEEDED, scratch path
+  absent from events. V7.1-002 covers budget-profile recording.

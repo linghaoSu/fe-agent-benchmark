@@ -298,6 +298,8 @@ export interface AdapterHostResult {
   patch: string;
   eventFrames: AdapterFrame[];
   stderr: string;
+  /** `complete.extensions` as sent by the Adapter (e.g. model usage); already redacted like every accepted frame. */
+  completion?: Record<string, unknown>;
 }
 
 export class SubprocessAdapterHost {
@@ -447,10 +449,12 @@ export class SubprocessAdapterHost {
         } else if (safeFrame.type === "complete") {
           clearHeartbeat();
           clearWallTimeBudget();
-          const result = {
+          const completion = (safeFrame.payload as { extensions?: unknown }).extensions;
+          const result: AdapterHostResult = {
             patch: typeof safeFrame.payload.patch === "string" ? safeFrame.payload.patch : "",
             eventFrames,
             stderr: redactCredentials(stderr),
+            ...(completion && typeof completion === "object" ? { completion: completion as Record<string, unknown> } : {}),
           };
           send("shutdown", { reason: "complete" });
           completed = result;

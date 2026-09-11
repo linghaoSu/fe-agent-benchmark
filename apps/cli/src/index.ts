@@ -61,6 +61,20 @@ import {
   resolvePinnedImageReference,
 } from "@frontend-agent-benchmark/sandbox-docker";
 
+/**
+ * Budget profiles scale a Task's declared budgets for a class of Agent. Task budgets were sized for the
+ * scripted Mock; a real model needs room to read the repo, edit and self-verify. The chosen profile is
+ * recorded in the immutable Run input, so only Runs with the same profile are comparable.
+ */
+const BUDGET_PROFILES = {
+  task: (b: { maxWallTimeSeconds: number; maxAgentSteps: number; maxCostUsd: number }) => b,
+  agent: (b: { maxWallTimeSeconds: number; maxAgentSteps: number; maxCostUsd: number }) => ({
+    maxWallTimeSeconds: Math.max(b.maxWallTimeSeconds, 900),
+    maxAgentSteps: Math.max(b.maxAgentSteps, 200),
+    maxCostUsd: Math.max(b.maxCostUsd, 5),
+  }),
+} as const;
+
 // Evaluation commands (install/test/build) are bounded independently of the Agent wall budget.
 const EVALUATION_COMMAND_TIMEOUT_MS = 5 * 60_000;
 // Upper bound for one recursive `eval run …` child spawned by baseline/calibrate/repeat.
@@ -72,8 +86,8 @@ const usage = [
   "Usage: pnpm eval validate <path>",
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
-  "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]",
-  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow|reference:<name>] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>]",
+  "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--db <path>]",
+  "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow|reference:<name>] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>] | pnpm eval run execute <run-id> --agent opencode --model <provider/model> [--variant <v>] --sandbox docker [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
@@ -604,15 +618,17 @@ function createRun(arguments_: string[]): boolean {
     || parsed.positionals.length !== 1
     || typeof parsed.options["--seed"] !== "string"
     || Object.keys(parsed.options).some((option) => (
-      option !== "--seed" && option !== "--sandbox" && option !== "--db"
+      option !== "--seed" && option !== "--sandbox" && option !== "--db" && option !== "--budget-profile"
     ))
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
       && parsed.options["--sandbox"] !== "docker")
+    || (parsed.options["--budget-profile"] !== undefined && !(parsed.options["--budget-profile"] as string in BUDGET_PROFILES))
   ) return false;
 
   const seed = Number(parsed.options["--seed"]);
   if (!Number.isSafeInteger(seed)) return false;
+  const budgetProfile = (parsed.options["--budget-profile"] as keyof typeof BUDGET_PROFILES | undefined) ?? "task";
 
   const taskDirectory = resolve(process.cwd(), parsed.positionals[0]!);
   const preflight = preflightTaskBundle(taskDirectory);
@@ -640,7 +656,8 @@ function createRun(arguments_: string[]): boolean {
     task: { id: metadata.taskId, version: metadata.version },
     bundleChecksum: checksum.bundleChecksum,
     seed,
-    budgets: metadata.budgets,
+    budgets: BUDGET_PROFILES[budgetProfile](metadata.budgets),
+    budgetProfile,
     permissions: metadata.permissions,
     evaluation: { commands: metadata.commands, buildOutputPaths: metadata.buildOutputPaths, appPort: metadata.appPort, hiddenBundle: metadata.hiddenBundle, requiredGates: { criticalFunctionalTests: metadata.criticalFunctionalTests }, viewports: metadata.viewports, locale: metadata.locale, timezone: metadata.timezone, weights: metadata.weights, visualMismatchThreshold: metadata.visualMismatchThreshold },
     sandbox: {
@@ -650,12 +667,12 @@ function createRun(arguments_: string[]): boolean {
       user: "1000:1000",
       resources: { memoryBytes: 536_870_912, cpus: 1, pidsLimit: 128 },
     },
-    toolRouter: {
-      maxTotalToolOutputBytes: DEFAULT_MAX_TOTAL_TOOL_OUTPUT_BYTES,
-      maxInlineToolOutputBytes: DEFAULT_MAX_INLINE_TOOL_OUTPUT_BYTES,
-    },
+    // A real agent mirrors the workspace through read_file, so the agent profile allows whole source files inline.
+    toolRouter: budgetProfile === "agent"
+      ? { maxTotalToolOutputBytes: 32 * DEFAULT_MAX_TOTAL_TOOL_OUTPUT_BYTES, maxInlineToolOutputBytes: 768 * 1024 }
+      : { maxTotalToolOutputBytes: DEFAULT_MAX_TOTAL_TOOL_OUTPUT_BYTES, maxInlineToolOutputBytes: DEFAULT_MAX_INLINE_TOOL_OUTPUT_BYTES },
     adapterProtocol: {
-      maxFrameBytes: DEFAULT_MAX_FRAME_BYTES,
+      maxFrameBytes: budgetProfile === "agent" ? 1_048_576 : DEFAULT_MAX_FRAME_BYTES,
       heartbeatTimeoutSeconds: DEFAULT_HEARTBEAT_TIMEOUT_MS / 1_000,
     },
     dependencyLockHash: metadata.dependencyLockHash,
@@ -805,9 +822,10 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     !parsed
     || parsed.positionals.length !== 1
     || Object.keys(parsed.options).some((option) => (
-      option !== "--agent" && option !== "--mock-scenario" && option !== "--evaluators" && option !== "--sandbox" && option !== "--db"
+      option !== "--agent" && option !== "--mock-scenario" && option !== "--evaluators" && option !== "--sandbox" && option !== "--db" && option !== "--model" && option !== "--variant"
     ))
-    || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock")
+    || (parsed.options["--agent"] !== undefined && parsed.options["--agent"] !== "mock" && parsed.options["--agent"] !== "opencode")
+    || (parsed.options["--agent"] === "opencode" && typeof parsed.options["--model"] !== "string")
     || (parsed.options["--mock-scenario"] !== undefined
       && parsed.options["--mock-scenario"] !== "docker-residual"
       && !["docker-unsafe", "build-pass", "build-break", "functional-break", "forbidden-write", "react-orders-gold", "react-orders-noop", "react-orders-mutation-overflow"].includes(parsed.options["--mock-scenario"] as string)
@@ -865,7 +883,37 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           services: resolved.services,
         })
       : undefined;
-    const agent = parsed.options["--agent"] === "mock"
+    const agentCommand = parsed.options["--agent"] === "opencode"
+      ? {
+          command: process.execPath,
+          args: [
+            new URL("../../../packages/adapter-opencode/dist/index.js", import.meta.url).pathname,
+            "--model", parsed.options["--model"] as string,
+            "--node-modules", join(task.path, "node_modules"),
+            "--fixtures", join(task.path, "fixtures"),
+            "--max-runtime-ms", String((resolved.budgets?.maxWallTimeSeconds ?? 900) * 1_000 - 60_000),
+            ...(typeof parsed.options["--variant"] === "string" ? ["--variant", parsed.options["--variant"] as string] : []),
+          ],
+          // OpenCode needs its own config/auth and the PATH to find `opencode`; nothing task-specific leaks in.
+          env: { HOME: process.env.HOME ?? "", PATH: process.env.PATH ?? "", OPENCODE_BINARY: process.env.OPENCODE_BINARY ?? "opencode", ...(process.env.XDG_CONFIG_HOME ? { XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME } : {}) },
+        }
+      : undefined;
+    const agent = parsed.options["--agent"] === "opencode" && agentCommand
+      ? new SubprocessAgentPhase({
+          store,
+          artifacts,
+          command: agentCommand,
+          maxFrameBytes: protocol!.maxFrameBytes,
+          heartbeatTimeoutMs: protocol!.heartbeatTimeoutSeconds * 1_000,
+          ...(sandbox ? { runner: sandbox } : {}),
+          ...(sandbox ? { toolRouter: { isClosed: () => sandbox.isFrozen({
+            runId,
+            attemptId: store.attempts.list(runId).at(-1)?.attemptId ?? "",
+            ordinal: 0,
+            seed: 0,
+          }) } } : {}),
+        })
+      : parsed.options["--agent"] === "mock"
       ? new SubprocessAgentPhase({
           store,
           artifacts,
