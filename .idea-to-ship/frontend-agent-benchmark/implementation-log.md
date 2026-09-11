@@ -798,3 +798,21 @@ per-task 13–26k input / 1–4k output tokens, 60–135 s wall.
 - `tsc -p packages/adapter-opencode/tsconfig.json` passes.
 - Adversarial review (3 lenses) surfaced and we fixed: GATE-V4.2b-001 still asserting proxy URLs; scaffold-task copying deleted fixtures; open-mode preflight not pinning the image (now requires `@sha256:` digest) and not rejecting `packageProxy`; pnpm lockfiles rejected in open mode; `compare` fingerprint ignoring network mode; adapter falling back to online install for controlled-proxy bundles (now gated on `--network open`); run.schema allowing null lock hash / snapshot id.
 - Verification: GATE-V7.2-001/002/Docker 3/3 (Docker gate: real `npm ci` against registry.npmjs.org inside the sandbox, solved with gold, network-policy defaultAction allow, network absent after cleanup); v0 contract gates, v3 network/proxy gates, v6 comparison, v7 adapter gates green; all 10 tasks recalibrated against the open-network bundles and suite republished as v7.
+
+## 2026-09-11 — V8.1 Dashboard (read-only API + dao-style UI)
+
+- `apps/dashboard-server`: node:http JSON API over every `runs/*.sqlite` (opened `readOnly` via node:sqlite —
+  never runs migrations) and the Artifact trees beside them. Endpoints: /api/health, /api/runs (filters),
+  /api/runs/:id (the `run show` shape plus summary, evaluator results, functional tests, visual diffs, agent
+  events), /api/runs/:id/artifacts/<path> (finalized artifacts of the last Attempt only, traversal-safe, PNG
+  decoding for screenshots), /api/tasks, /api/compare (success@k via packages/comparison, fingerprint check
+  reported not enforced). Legacy databases lacking current tables are skipped. GATE-V8.1-001 covers it on a
+  private copy of the Kimi sweep database.
+- `apps/dashboard`: generated with `dao create --all-templates` (Vue 3 + TS + rsbuild + @dao-style/core/extend),
+  excluded from the root pnpm workspace (own lockfile, npmmirror registry, `ignore-workspace=true`). Pages:
+  Run 列表 (filters, scores, failed gate, tokens), Run 详情 (概览 / 评测器 / 截图 / 补丁 / 工具调用 / 事件 /
+  状态机), 模型对比 (success@k per model, 环境不一致 warning). Smoke-tested with Playwright against real data.
+- Scaffold finding worth a task later: a fresh `dao create` project fails `pnpm build` — `@dao-style/extend`
+  1.26.2 needs `monaco-editor` (peer, not installed) and monaco 0.56's exports break the import; pinning
+  `monaco-editor@0.52.2` fixes it.
+- Usage: `pnpm dashboard:server` (port 8788) and `pnpm dashboard` (port 8790, proxies /api).

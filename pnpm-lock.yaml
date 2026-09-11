@@ -48,6 +48,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tool-router
 
+  apps/dashboard-server:
+    dependencies:
+      '@frontend-agent-benchmark/comparison':
+        specifier: workspace:*
+        version: link:../../packages/comparison
+      '@frontend-agent-benchmark/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+
   packages/adapter-mock:
     dependencies:
       '@frontend-agent-benchmark/adapter-protocol':

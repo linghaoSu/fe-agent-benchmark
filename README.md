@@ -103,6 +103,16 @@ pnpm eval suite publish --id mvp-regression --version 4 --type regression --task
 pnpm eval suite calibrate --suite datasets/suites/mvp-regression.json --tasks-root datasets/tasks
 ```
 
+## Dashboard
+
+```bash
+pnpm dashboard:server            # 只读 API，扫描 runs/*.sqlite 与 Artifact，默认 :8788
+cd apps/dashboard && pnpm install && cd ../.. && pnpm dashboard   # dao-style Web 界面 :8790
+```
+
+Run 列表 / Run 详情（门禁、评测器、截图、补丁、工具调用、事件、状态机）/ 模型对比（success@k）。
+`apps/dashboard` 是 `dao create` 生成的独立 pnpm 项目，不在根 workspace 内。
+
 ## 新增任务
 
 ```bash

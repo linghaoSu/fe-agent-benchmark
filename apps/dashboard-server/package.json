@@ -1,0 +1,12 @@
+{
+  "name": "@frontend-agent-benchmark/dashboard-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@frontend-agent-benchmark/comparison": "workspace:*",
+    "@frontend-agent-benchmark/contracts": "workspace:*"
+  }
+}
