@@ -1,0 +1,379 @@
+{
+  "schemaVersion": 1,
+  "taskId": "react-form-validation-065",
+  "taskVersion": 1,
+  "bundleChecksum": "sha256:5965d73519f27f381ab48396f321c9be10c4fb4eb67d287212a40356a048e894",
+  "createdAt": "2026-09-11T02:32:21.109Z",
+  "entries": [
+    {
+      "reference": "alternative",
+      "runId": "e4ffc802-8246-43d2-8033-a161fb185b02",
+      "kind": "alternative",
+      "expected": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scoreAtLeast": {
+          "functional": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        }
+      },
+      "observed": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "visual": "failed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 1,
+          "visual": 0.4447510870788323,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_PASSED",
+          "ENGINEERING_PASSED",
+          "VISUAL_MISMATCH",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "gold",
+      "runId": "b73bae8b-f619-4150-b045-d001751ae9c4",
+      "kind": "gold",
+      "expected": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scoreAtLeast": {
+          "functional": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        }
+      },
+      "observed": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "visual": "passed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 1,
+          "visual": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_PASSED",
+          "ENGINEERING_PASSED",
+          "VISUAL_PASSED",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "mutations/aria-invalid-never-set",
+      "runId": "77193c94-61d6-4464-8d0e-be12b4209971",
+      "kind": "mutation",
+      "expected": {
+        "solved": true,
+        "gates": {
+          "criticalFunctionalTests": "passed"
+        },
+        "scoreBelow": {
+          "functional": 1
+        }
+      },
+      "observed": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "visual": "passed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 0.8333333333333334,
+          "visual": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_PASSED",
+          "ENGINEERING_PASSED",
+          "VISUAL_PASSED",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "mutations/confirm-not-compared",
+      "runId": "3b9524de-07ef-479f-9cc9-2e65c8d4b121",
+      "kind": "mutation",
+      "expected": {
+        "solved": false,
+        "gates": {
+          "criticalFunctionalTests": "failed"
+        },
+        "codes": [
+          "FUNCTIONAL_CRITICAL_FAILED"
+        ]
+      },
+      "observed": {
+        "valid": true,
+        "solved": false,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "failed"
+        },
+        "dimensions": {
+          "visual": "passed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 0.8333333333333334,
+          "visual": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_CRITICAL_FAILED",
+          "ENGINEERING_PASSED",
+          "VISUAL_PASSED",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "mutations/email-accepts-anything",
+      "runId": "4d0834b2-f138-4c5a-8848-6f58ade6f4e4",
+      "kind": "mutation",
+      "expected": {
+        "solved": false,
+        "gates": {
+          "criticalFunctionalTests": "failed"
+        },
+        "codes": [
+          "FUNCTIONAL_CRITICAL_FAILED"
+        ]
+      },
+      "observed": {
+        "valid": true,
+        "solved": false,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "failed"
+        },
+        "dimensions": {
+          "visual": "passed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 0.8333333333333334,
+          "visual": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_CRITICAL_FAILED",
+          "ENGINEERING_PASSED",
+          "VISUAL_PASSED",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "mutations/remove-labels",
+      "runId": "b4470852-2a1b-4ec6-94e0-e62674fd12c8",
+      "kind": "mutation",
+      "expected": {
+        "solved": true,
+        "gates": {
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "accessibility": "failed"
+        },
+        "scoreBelow": {
+          "accessibility": 1
+        }
+      },
+      "observed": {
+        "valid": true,
+        "solved": true,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "passed"
+        },
+        "dimensions": {
+          "visual": "failed",
+          "responsive": "passed",
+          "accessibility": "failed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 0.8333333333333334,
+          "visual": 0.6701583888968671,
+          "responsive": 1,
+          "accessibility": 0.9130434782608696,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_PASSED",
+          "ENGINEERING_PASSED",
+          "VISUAL_MISMATCH",
+          "RESPONSIVE_PASSED",
+          "A11Y_VIOLATIONS"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "reference": "mutations/success-shown-despite-errors",
+      "runId": "319c59b6-4a1c-43a3-904e-8fdf775d700d",
+      "kind": "mutation",
+      "expected": {
+        "solved": false,
+        "gates": {
+          "criticalFunctionalTests": "failed"
+        },
+        "codes": [
+          "FUNCTIONAL_CRITICAL_FAILED"
+        ]
+      },
+      "observed": {
+        "valid": true,
+        "solved": false,
+        "gates": {
+          "integrity": "passed",
+          "build": "passed",
+          "criticalFunctionalTests": "failed"
+        },
+        "dimensions": {
+          "visual": "passed",
+          "responsive": "passed",
+          "accessibility": "passed",
+          "engineering": "passed"
+        },
+        "scores": {
+          "build": 1,
+          "functional": 0.5,
+          "visual": 1,
+          "responsive": 1,
+          "accessibility": 1,
+          "engineering": 1
+        },
+        "codes": [
+          "INTEGRITY_PASSED",
+          "BUILD_PASSED",
+          "START_PASSED",
+          "FUNCTIONAL_CRITICAL_FAILED",
+          "ENGINEERING_PASSED",
+          "VISUAL_PASSED",
+          "RESPONSIVE_PASSED",
+          "A11Y_PASSED"
+        ]
+      },
+      "mismatches": [],
+      "passed": true
+    }
+  ],
+  "mutationCaptureRate": 1,
+  "passed": true
+}

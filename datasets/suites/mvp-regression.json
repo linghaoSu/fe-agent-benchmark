@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "suiteId": "mvp-regression",
-  "version": 3,
+  "version": 5,
   "type": "regression",
-  "manifestChecksum": "sha256:825ba9f4c8c7149add4985e415c2a4145d520477a81cf688d223de8faf6b95a1",
-  "publishedAt": "2026-09-10T13:33:09.731Z",
+  "manifestChecksum": "sha256:4b689de26df5f77eb541eee523ca473caa86d5c33f526b278e4a578546d18020",
+  "publishedAt": "2026-09-11T05:04:57.447Z",
   "tasks": [
     {
       "taskId": "react-cart-quantity-021",
@@ -19,7 +19,7 @@
     {
       "taskId": "react-hooks-refactor-109",
       "version": 1,
-      "bundleChecksum": "sha256:055127d3162801c8829f53b698c2eaae97cbbe7c4f671627c946c0c47fbd6750"
+      "bundleChecksum": "sha256:68061fda19f7a03f0d14e45435bdef79b04f4e5b898204dcc7b0bba677af1ba1"
     },
     {
       "taskId": "react-orders-filter-017",
@@ -39,7 +39,7 @@
     {
       "taskId": "react-search-debounce-043",
       "version": 1,
-      "bundleChecksum": "sha256:0001ea75a2f036ae2b921e957e17654b074fbce6712f89569a27854d2321ef2f"
+      "bundleChecksum": "sha256:9c929b291a9025a9153db5bcc461d3d6b9dcfacf41a2a4576eabeb1ffbce6052"
     },
     {
       "taskId": "react-sort-bug-087",

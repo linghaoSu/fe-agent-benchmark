@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "e09fcf67-b6f2-4926-9c85-675b427dd193",
+  "createdAt": "2026-09-11T04:43:28.290Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-form-validation-065",
+      "runIds": [
+        "928e3bcf-c370-411a-a150-fa0fe2b55bcc",
+        "d52d1688-6174-4841-a37c-bc621e4c177e",
+        "8aba5147-f3b3-4e78-9486-430013925bc8",
+        "f749d53d-be3c-4b12-aac2-f90680f9561b",
+        "4e4c8105-cdaa-40b8-a072-7c602c874d38"
+      ]
+    },
+    {
+      "configurationId": "noop:react-form-validation-065",
+      "runIds": [
+        "b87d71ce-a79e-46e6-80bd-9d106d5b11f3",
+        "fe990018-8b17-4a44-86af-96bbd37d9405",
+        "b5b7220b-1444-476f-960d-74a604714e68",
+        "74a8b2d8-d942-4a35-8955-6c11496d892b",
+        "3e345d0e-8260-4b81-8bdf-b8d0ef89dd0a"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-form-validation-065",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.1902,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-form-validation-065",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.4118,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.166667,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-form-validation-065": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-form-validation-065": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-form-validation-065": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-form-validation-065": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

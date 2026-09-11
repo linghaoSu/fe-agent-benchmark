@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "66c32664-059d-49ee-9215-a58a8209960e",
+  "createdAt": "2026-09-11T04:43:34.666Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-todo-toggle-bug-032",
+      "runIds": [
+        "ca16b774-d971-4b41-a55d-e8fd650e725d",
+        "5e5178d0-f867-4d7f-8d6a-4b53c96b1639",
+        "e73a7962-e93d-4fdb-9cd7-43ed782e781f",
+        "80c26d4e-70c5-45bf-af51-d18bfea8489f",
+        "8b355926-d195-4491-8167-f93f2b1ab29b"
+      ]
+    },
+    {
+      "configurationId": "noop:react-todo-toggle-bug-032",
+      "runIds": [
+        "cfd41efd-66b0-42cc-a4b7-1f0a14e65502",
+        "4572b321-2015-4d65-92f1-498265297e51",
+        "0d5619d7-f7b7-4f9a-b599-bf56ab281044",
+        "b55b71f8-5169-404a-8cd0-12a084aea1ce",
+        "43c0a710-a0e6-4944-bb53-530f49c506ae"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-todo-toggle-bug-032",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.3056,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-todo-toggle-bug-032",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.1566,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.2,
+        "visual": 0.942253,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-todo-toggle-bug-032": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-todo-toggle-bug-032": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-todo-toggle-bug-032": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-todo-toggle-bug-032": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

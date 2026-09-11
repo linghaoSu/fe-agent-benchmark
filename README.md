@@ -43,6 +43,65 @@
 - Benchmark 与 Regression Suite 分开管理。
 - 评测结果保留分项向量，不只保留单一总分。
 
+## 当前状态（2026-09-11）
+
+V0–V6 已实现：合同与 Schema、SQLite Run/Attempt 状态机、Adapter stdio 协议与 Mock Adapter、
+Tool Router、Docker 沙箱（默认拒绝网络、受控依赖代理、阶段屏障、不可变快照）、
+Integrity / Build / Start / 隐藏 Playwright 功能 / 视觉 / 响应式 / 可访问性 / 工程 评测器、
+Gold / Alternative / Mutation 校准、确定性重复比较、seed 批次与 success@k 对比、
+Suite 发布门禁，以及 10 个已校准任务（`datasets/tasks/`，D8 分布，`datasets/suites/mvp-regression.json`）。
+
+## 环境要求
+
+- Node 26（使用 `node:sqlite`）、pnpm 10。
+- Docker（OrbStack 或 Docker Desktop）。沙箱镜像按 digest 固定：
+  `node:22-alpine@sha256:16e22a55…` 与 `mcr.microsoft.com/playwright:v1.59.1-noble@sha256:b0ab6f3c…`；
+  若被本地清理，`docker pull <ref@digest>` 即可（Run 会以 `SANDBOX_IMAGE_UNAVAILABLE` 明确失败）。
+- 所有依赖离线：任务的 npm 包来自 `tests/fixtures/package-proxy/tarballs`，浏览器库来自
+  `tests/fixtures/playwright-runtime`。沙箱内没有任何外网访问。
+
+## 快速开始
+
+```bash
+pnpm install && pnpm build
+node --test --test-concurrency=1 tests/gate/*.test.mjs   # 全部门禁（含真实 Docker，约 25 分钟）
+
+# 一次完整评测：Gold 参考实现通过整条流水线
+pnpm eval run create datasets/tasks/react-orders-filter-017 --seed 7 --sandbox docker
+pnpm eval run execute <run-id> --agent mock --mock-scenario reference:gold --sandbox docker
+pnpm eval run show <run-id>                    # Result、Attempt、评测器结果、Artifact
+pnpm eval run export --audience requester <run-id>
+
+# 校准一个任务：gold + alternative + 全部 mutation 必须符合各自 expected.json
+pnpm eval calibrate datasets/tasks/react-orders-filter-017 --out reports/react-orders-filter-017.json
+
+# 确定性：同一输入重复 N 次，结论必须完全一致
+pnpm eval repeat datasets/tasks/react-orders-filter-017 --times 3
+
+# 多 seed 独立 Run 与 success@k 对比
+pnpm eval batch datasets/tasks/react-orders-filter-017 --seeds 1,2,3 --scenario reference:gold --configuration gold --db runs/cmp.sqlite
+pnpm eval batch datasets/tasks/react-orders-filter-017 --seeds 1,2,3 --scenario react-orders-noop --configuration noop --db runs/cmp.sqlite
+pnpm eval compare --config gold=<ids> --config noop=<ids> --k 3 --out report.json --db runs/cmp.sqlite
+
+# 发布 Suite（要求每个任务有与 bundle checksum 绑定且通过的校准报告）
+pnpm eval suite publish --id mvp-regression --version 4 --type regression --task datasets/tasks/<id> ... \
+  --calibration datasets/calibration --out datasets/suites/mvp-regression.json
+pnpm eval suite calibrate --suite datasets/suites/mvp-regression.json --tasks-root datasets/tasks
+```
+
+## 新增任务
+
+```bash
+node scripts/scaffold-task.mjs <task-id> "<标题>" <feature|bugfix|visual|async|accessibility|refactor>
+```
+
+然后补齐 `README.md`、`src/`（起始代码）、`tests/`（公开 smoke test）、`evaluator/hidden/functional.spec.mjs`
+（隐藏 Playwright 用例，`export default [{ id, critical, run(page) }]`）、`references/gold`、
+`references/alternative`（结构不同的正确实现）、`references/mutations/<name>`（每个恰好一个缺陷）——
+每个 reference 都需要 `expected.json`。用 `pnpm eval baseline <task>` 生成视觉基线，
+`pnpm eval calibrate <task>` 必须 100% 捕获 mutation 后才能进入 Suite。
+`evaluator/` 与 `references/` 对 Agent 不可见；公开文件中不得出现隐藏断言文本（发布门禁会拒绝）。
+
 ## Run 命令
 
 ```bash

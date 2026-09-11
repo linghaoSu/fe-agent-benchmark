@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "5ce08bc1-2092-4d02-83e6-eba2040bd5cb",
+  "createdAt": "2026-09-11T04:43:31.234Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-orders-filter-017",
+      "runIds": [
+        "7272850c-eced-4014-af14-2a4820536b86",
+        "0a064c16-43e4-4697-ae26-3b343aaa77c8",
+        "8e81071b-d628-4a6b-8efd-1cba801b9fe5",
+        "b1e2e0d4-f559-4d16-b5a0-bf3121430d9f",
+        "4ad67b23-107a-431c-bbbe-ad171c33a096"
+      ]
+    },
+    {
+      "configurationId": "noop:react-orders-filter-017",
+      "runIds": [
+        "c8c5945a-83c3-4c9d-9d52-d3fa95b8e9bb",
+        "34878c28-151f-426d-9c9a-c3a0207a4e64",
+        "9026c533-9153-49a9-b034-787c84c9fd30",
+        "f484c7d0-5367-4c5b-a0fa-a7b2bb8edc5a",
+        "d6e39e31-b28e-4096-8c31-482e560eef8c"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-orders-filter-017",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.267,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-orders-filter-017",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.2162,
+      "meanScores": {
+        "build": 1,
+        "functional": 0,
+        "visual": 0.940193,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-orders-filter-017": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-orders-filter-017": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-orders-filter-017": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-orders-filter-017": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

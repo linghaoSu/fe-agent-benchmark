@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "0fbb4933-3c62-4193-b332-337efde242d2",
+  "createdAt": "2026-09-11T04:43:27.784Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-cart-quantity-021",
+      "runIds": [
+        "366c5c60-7ee2-4320-85f4-2d648fe9b6a2",
+        "6db94059-635f-4833-ac38-03ecc5b6a16f",
+        "76600340-ccde-4103-b5d0-f37bd98909bb",
+        "dc16a776-a009-4ca5-b2d1-dc7a6472ac68",
+        "89deba37-f35d-43e4-8490-a54c2541ac7f"
+      ]
+    },
+    {
+      "configurationId": "noop:react-cart-quantity-021",
+      "runIds": [
+        "118ed570-4646-4457-a750-b5900109066f",
+        "d4909642-8a29-4beb-9013-693907420a4c",
+        "ed626178-b3b3-4e5a-9d48-71de890ec9dc",
+        "1327fbe6-f358-4e06-abc3-0c6b35cb8e2a",
+        "1abbd45e-8672-44d6-93f0-2f84f1665d47"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-cart-quantity-021",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.7124,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-cart-quantity-021",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.5298,
+      "meanScores": {
+        "build": 1,
+        "functional": 0,
+        "visual": 0.518279,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-cart-quantity-021": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-cart-quantity-021": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-cart-quantity-021": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-cart-quantity-021": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

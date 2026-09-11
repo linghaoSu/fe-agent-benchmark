@@ -708,3 +708,8 @@
   (`spawnSync docker ETIMEDOUT` → correctly classified DOCKER_UNAVAILABLE); the
   daemon is still hung, so the baseline, recalibration of 043/109, suite v4
   republish and the full gate run are pending a Docker restart.
+- 2026-09-11 (Docker recovered): all nine review fixes verified. 043 and 109
+  recalibrated 7/7; all 10 reports regenerated and committed; suite v5
+  published through `--calibration`; 100-Run baseline gold 50/50 solved,
+  noop 0/50, stability 1; the debounce test was made jitter-proof after one
+  gold miss (keystrokes dispatched in-page). Full suite 177/177.

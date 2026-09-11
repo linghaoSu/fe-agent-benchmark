@@ -6,9 +6,17 @@ export default [
   { id: "debounce-limits-requests", critical: true, async run(page) {
     // Five fast keystrokes within the 150 ms window must coalesce into at most two API calls.
     await page.evaluate(() => { globalThis.__searchUsersCalls = 0; });
-    const input = page.locator("[data-testid=search-input]");
-    await input.fill("");
-    for (const chunk of ["a", "an", "ann", "anna", "annab"]) { await input.fill(chunk); await page.waitForTimeout(20); }
+    await page.fill("[data-testid=search-input]", "");
+    // Type five chunks 10 ms apart inside the page so host scheduling jitter cannot spread them past the debounce window.
+    await page.evaluate(async () => {
+      const input = document.querySelector("[data-testid=search-input]");
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      for (const chunk of ["a", "an", "ann", "anna", "annab"]) {
+        setter.call(input, chunk);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    });
     await page.waitForFunction(() => !document.querySelector("[data-testid=loading-state]"), null, { timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1200);
     const calls = await page.evaluate(() => globalThis.__searchUsersCalls || 0);

@@ -651,3 +651,55 @@
   `<ul>` layout differs from gold baselines; the calibration expectation for
   correct alternatives therefore checks solved/gates, not visual. V6 owns
   seeds, success@k, comparison CLI and the 10-task dataset.
+
+## 2026-09-10 → 2026-09-11 — V6 repeats, comparison, Suite publication and the 10-task MVP
+
+### Scope and decisions
+
+- `packages/comparison`: success@k / any@k / all@k over independent Runs
+  (Attempts never count as samples; `allAtK` only over a full window of k;
+  only `COMPLETED` Runs with a Result can be solved), raw infrastructure rate
+  = Runs whose first Attempt hit an infrastructure error, final rate = Runs
+  whose final classification is infrastructure_error, means over
+  cost/wall/scores, and a stability extension (agreement of discrete
+  conclusions). Emits the existing comparison-report schema.
+- CLI: `eval batch` (one independent Run per seed), `eval compare`
+  (rejects duplicate Run ids, repeated seeds, mixed task/environment
+  fingerprints, Runs shared across configurations; ≥2 configurations by
+  schema), `eval suite publish` (validates every task, requires gold +
+  alternative + ≥1 mutation with parsed expectations, a hidden bundle, no
+  credential patterns or symlinks, no hidden-assertion text in public files,
+  a checksum-bound passing calibration report per task, unique ids and bundle
+  checksums; version immutability in a `<suiteId>.published.json` ledger with
+  atomic writes), `eval suite calibrate` (all-task matrix).
+- Dataset: 10 calibrated tasks in the D8 distribution, each with README,
+  starter, smoke test, hidden spec, gold + alternative (unit-tested), five
+  single-defect mutations and expectations; `scripts/scaffold-task.mjs`
+  shares one offline React runtime. Calibration reports are committed under
+  `datasets/calibration/` and bound to bundle checksums; Suite
+  `mvp-regression` v4 lists all 10.
+- Adversarial review of V6 (9 findings) all accepted and fixed — see tdd-log.
+  Two were dataset defects: the refactor task now asserts the singleton store
+  is gone and the hook exists (references declare deletions in `.deleted`),
+  and the async task now measures request frequency for its debounce
+  requirement with a single-defect `no-debounce` mutation.
+
+### Verification (2026-09-11, real Docker, Node 26)
+
+- All 10 tasks recalibrated after the review fixes: mutationCaptureRate 1
+  each; reports committed under `datasets/calibration/` and bound to bundle
+  checksums; Suite `mvp-regression` v5 published through the calibration gate.
+- 50-Run reliability baseline (`eval batch --seeds 1..5 --scenario
+  reference:gold` per task) plus 50 starter (`react-orders-noop`) Runs, all
+  100 COMPLETED with zero infrastructure errors; per-task gold-vs-noop
+  comparison reports committed under `datasets/reliability/`: gold
+  success@5 = 5/5 and all@5 on every task, noop 0/5, stability agreement 1
+  for every configuration. One gold Run of react-search-debounce-043 had
+  failed the new debounce test on the first baseline (timing jitter of
+  host-side `fill` calls spread five keystrokes past the 150 ms window); the
+  test now dispatches the keystrokes inside the page 10 ms apart, after which
+  3 repeats were identical and the 5-seed batch was 5/5.
+- Gates: V6.2-001 (publication contract), V6.3-003 (suite/calibration/
+  checksum consistency + D8 distribution), V6.4-001 (reliability baseline).
+- `node --test --test-concurrency=1 tests/gate/*.test.mjs`: 177/177,
+  0 skipped. `pnpm build`, `pnpm check:generated` exit 0.

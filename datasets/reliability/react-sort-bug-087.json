@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "b5816dcf-ef44-4bb9-923a-be395e39526b",
+  "createdAt": "2026-09-11T04:43:33.727Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-sort-bug-087",
+      "runIds": [
+        "e3d763e2-1c1b-40a9-9148-21ccdeb7a2bb",
+        "4fc776be-a3b7-4c61-9fe2-a871877e450d",
+        "15a5f4e8-60ca-48c5-8ae5-caadf0f43ba8",
+        "1d87255e-1705-40a6-b3c4-9b0d96ded262",
+        "c434f021-b8fc-462f-8e1b-2f321e950f58"
+      ]
+    },
+    {
+      "configurationId": "noop:react-sort-bug-087",
+      "runIds": [
+        "bf1875c5-8fd1-4dfe-9471-cd7b77339948",
+        "1ad3850f-1038-43a2-97b3-f25783cbc553",
+        "433a8006-0cee-49cb-b204-c8e018dcdca4",
+        "7f0ade43-bc8d-4072-a51e-61b455704be1",
+        "e7813429-040e-4721-b257-68472ee38582"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-sort-bug-087",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 2.88,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-sort-bug-087",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.1492,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.2,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-sort-bug-087": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-sort-bug-087": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-sort-bug-087": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-sort-bug-087": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

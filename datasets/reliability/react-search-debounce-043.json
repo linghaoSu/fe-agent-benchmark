@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "944d711c-04c6-44f4-bb7c-dffec238f663",
+  "createdAt": "2026-09-11T05:08:34.190Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-search-debounce-043",
+      "runIds": [
+        "19f83898-981a-46c1-bbe9-1bdcee240cb6",
+        "6ed07cbf-facd-4343-9062-ed69d7ff0138",
+        "f5de2871-c29a-4d3c-be44-9f41274ad71b",
+        "fa80285b-b210-4a5c-98a4-43944be1a54c",
+        "d31177a3-021a-488a-902a-89e7dc964b00"
+      ]
+    },
+    {
+      "configurationId": "noop:react-search-debounce-043",
+      "runIds": [
+        "c7e913dd-fa75-485e-bf2b-3756c8f580ed",
+        "fbb828a9-de1b-489c-a6ce-2b8b473dfdae",
+        "8e738a73-3fe2-48ca-b892-df98079313b8",
+        "40a5bb10-2b73-4c6b-93f9-fc9edc1f3831",
+        "888e07e1-82b9-4ac0-b8cd-f95a1e75e1db"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-search-debounce-043",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.7326,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-search-debounce-043",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.1788,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.428571,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-search-debounce-043": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-search-debounce-043": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-search-debounce-043": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-search-debounce-043": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "e7f43a4d-e1fe-462e-b968-39dca950f3de",
+  "createdAt": "2026-09-11T04:43:31.931Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-pagination-bug-076",
+      "runIds": [
+        "b0d35b7d-1a12-4dd5-9cd3-77d6dcb9e3e7",
+        "875af5f6-80e8-4633-a1d2-bc7cfaa364ab",
+        "108b8762-c080-4e57-b268-0eff508b8ca9",
+        "97473691-3d2c-4dc7-ac96-f7277cb45303",
+        "5d1d5ac0-4ac4-429f-a2f5-3255d6ba72b7"
+      ]
+    },
+    {
+      "configurationId": "noop:react-pagination-bug-076",
+      "runIds": [
+        "19b64f83-16a4-4245-b7d6-80ae12942dbd",
+        "ae0da9e1-ae5e-4a50-a950-25b335058d70",
+        "d89af784-d19a-4d73-9dab-e505a7fae48b",
+        "29f6c566-e27f-4586-a35a-ee33c5d28627",
+        "58fd6ab4-e593-4765-9e29-323a8c7e6f87"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-pagination-bug-076",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.9386,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-pagination-bug-076",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.1762,
+      "meanScores": {
+        "build": 1,
+        "functional": 0,
+        "visual": 0.993643,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-pagination-bug-076": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-pagination-bug-076": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-pagination-bug-076": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-pagination-bug-076": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

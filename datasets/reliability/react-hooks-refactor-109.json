@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "f09949d2-d1d4-42df-9bdc-f984ede8b196",
+  "createdAt": "2026-09-11T04:43:30.057Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-hooks-refactor-109",
+      "runIds": [
+        "06dbef54-0da9-4dc2-b1a0-e62fa9cfc3b7",
+        "db7ebdc8-e87a-4d60-b29a-398596fdde3b",
+        "ddd5f939-e64e-4abf-85c0-9a079a7a7fc2",
+        "02f822ac-a9f5-4544-a4c3-f9d6683e3fb1",
+        "8699b3f8-f7eb-4787-8b5d-adf5b4fa6eba"
+      ]
+    },
+    {
+      "configurationId": "noop:react-hooks-refactor-109",
+      "runIds": [
+        "41048632-b6d2-4bde-bfe3-ae74c5f875cf",
+        "0c9e242c-fd10-4aa1-9c70-d1a793069706",
+        "5aa3428d-d6b2-4caf-8b1d-dcaaf59adc36",
+        "48b2d229-7d6d-42af-8a40-625a4b7d6559",
+        "7551cc38-0d33-4cb9-a204-782d3d180e39"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-hooks-refactor-109",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.8734,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-hooks-refactor-109",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.4806,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.833333,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-hooks-refactor-109": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-hooks-refactor-109": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-hooks-refactor-109": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-hooks-refactor-109": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

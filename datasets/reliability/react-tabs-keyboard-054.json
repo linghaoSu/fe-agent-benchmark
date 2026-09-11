@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "4d3ea3b7-7db1-4eb3-9790-6a7b4f5977e7",
+  "createdAt": "2026-09-11T04:43:34.188Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-tabs-keyboard-054",
+      "runIds": [
+        "e580c121-8514-46ae-b362-9afb0f92f1cf",
+        "82714600-e62a-4170-b7f7-26d1eea9a9e6",
+        "d907c50f-6af8-418a-b995-4dd2e416a9a5",
+        "bee1e1c9-d8fd-455a-95d5-3c27552f5f45",
+        "a460e27a-4362-43cb-aadc-6e454b7512de"
+      ]
+    },
+    {
+      "configurationId": "noop:react-tabs-keyboard-054",
+      "runIds": [
+        "5fe21893-a226-42fd-886b-b0dd1b27544b",
+        "a1f7bb29-55e5-4ecb-a407-2c1a7547a401",
+        "6fe7eb7f-f895-4713-8598-ffeb2df6dc30",
+        "8cba9fe1-6dc7-44f5-891f-9b2deebe53ba",
+        "110dba66-12dd-4216-93fd-6314a6a21a92"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-tabs-keyboard-054",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.6508,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-tabs-keyboard-054",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.161,
+      "meanScores": {
+        "build": 1,
+        "functional": 0,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-tabs-keyboard-054": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-tabs-keyboard-054": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-tabs-keyboard-054": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-tabs-keyboard-054": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

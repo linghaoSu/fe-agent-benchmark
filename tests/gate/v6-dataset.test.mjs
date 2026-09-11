@@ -31,3 +31,34 @@ test("GATE-V6.3-002: task ids and bundle checksums are unique across the dataset
   const checksums = tasks.map((id) => JSON.parse(cli("checksum", join(tasksRoot, id)).stdout).bundleChecksum);
   assert.equal(new Set(checksums).size, tasks.length);
 });
+
+test("GATE-V6.3-003: published suite lists every dataset task with its current checksum and a passing bound calibration report", () => {
+  const suite = JSON.parse(readFileSync(new URL("../../datasets/suites/mvp-regression.json", import.meta.url), "utf8"));
+  assert.equal(suite.tasks.length, tasks.length);
+  for (const entry of suite.tasks) {
+    const checksum = JSON.parse(cli("checksum", join(tasksRoot, entry.taskId)).stdout).bundleChecksum;
+    assert.equal(entry.bundleChecksum, checksum, `${entry.taskId} checksum drifted since publication`);
+    const report = JSON.parse(readFileSync(new URL(`../../datasets/calibration/${entry.taskId}.json`, import.meta.url), "utf8"));
+    assert.equal(report.bundleChecksum, checksum, `${entry.taskId} calibration report is stale`);
+    assert.equal(report.passed, true); assert.equal(report.mutationCaptureRate, 1);
+  }
+  const distribution = {};
+  for (const id of tasks) distribution[readFileSync(join(tasksRoot, id, "task.yaml"), "utf8").match(/taskType: (\w+)/)[1]] = (distribution[readFileSync(join(tasksRoot, id, "task.yaml"), "utf8").match(/taskType: (\w+)/)[1]] ?? 0) + 1;
+  assert.deepEqual(distribution, { feature: 3, bugfix: 3, visual: 1, async: 1, accessibility: 1, refactor: 1 });
+});
+
+test("GATE-V6.4-001: committed reliability baseline — every task has gold success@5 = 5 and noop 0, all conclusions stable", () => {
+  const dir = new URL("../../datasets/reliability/", import.meta.url);
+  const reports = readdirSync(dir).filter((f) => f.endsWith(".json")).sort();
+  assert.deepEqual(reports.map((f) => f.replace(".json", "")), tasks);
+  for (const file of reports) {
+    const report = JSON.parse(readFileSync(new URL(file, dir), "utf8"));
+    const gold = report.comparisons.find((c) => c.configurationId.startsWith("gold:"));
+    const noop = report.comparisons.find((c) => c.configurationId.startsWith("noop:"));
+    assert.deepEqual([gold.requestedK, gold.successAtK, gold.allAtK], [5, 5, true], `${file} gold`);
+    assert.deepEqual([noop.successAtK, noop.anyAtK], [0, false], `${file} noop`);
+    assert.equal(gold.finalInfrastructureRate, 0, `${file} infra`);
+    for (const id of [gold.configurationId, noop.configurationId]) assert.equal(report.extensions.stability[id].agreement, 1, `${file} ${id} stability`);
+    assert.equal(new Set(report.extensions.seeds[gold.configurationId]).size, 5);
+  }
+});

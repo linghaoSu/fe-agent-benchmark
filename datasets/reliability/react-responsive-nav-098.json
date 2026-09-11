@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "comparisonReportId": "affa34f2-a1f4-414e-96dc-de46357cbed2",
+  "createdAt": "2026-09-11T04:43:32.487Z",
+  "configurations": [
+    {
+      "configurationId": "gold:react-responsive-nav-098",
+      "runIds": [
+        "e3e8d6a4-a5c3-4ac1-8613-c31f985be62b",
+        "6f78adc3-9802-42ec-a2a4-25d4f4dfa9ca",
+        "db75f5c1-055b-4bd2-b54b-224bd27b8b83",
+        "5389c086-2c8a-4dc6-afb9-460fae8451cf",
+        "b891626e-c468-47a4-991a-4921e52dbe2c"
+      ]
+    },
+    {
+      "configurationId": "noop:react-responsive-nav-098",
+      "runIds": [
+        "3aff2456-c72f-4626-a4c4-1bcd6ad9ab21",
+        "002c65a3-eab9-4380-9549-9b5745955f06",
+        "8b05d581-b88c-4dcc-af02-fa4cf14b5166",
+        "1b09e67b-0bbc-4e50-a37d-78cb3e9872b5",
+        "cff14fc3-323a-4607-a775-58e29e323d21"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "configurationId": "gold:react-responsive-nav-098",
+      "requestedK": 5,
+      "successAtK": 5,
+      "anyAtK": true,
+      "allAtK": true,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 1.8588,
+      "meanScores": {
+        "build": 1,
+        "functional": 1,
+        "visual": 1,
+        "responsive": 1,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    },
+    {
+      "configurationId": "noop:react-responsive-nav-098",
+      "requestedK": 5,
+      "successAtK": 0,
+      "anyAtK": false,
+      "allAtK": false,
+      "rawInfrastructureRate": 0,
+      "finalInfrastructureRate": 0,
+      "meanCostUsd": 0,
+      "meanWallTimeSeconds": 0.1602,
+      "meanScores": {
+        "build": 1,
+        "functional": 0.166667,
+        "visual": 0.027027,
+        "responsive": 0.555556,
+        "accessibility": 1,
+        "engineering": 1
+      }
+    }
+  ],
+  "extensions": {
+    "stability": {
+      "gold:react-responsive-nav-098": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      },
+      "noop:react-responsive-nav-098": {
+        "agreement": 1,
+        "distinctConclusions": 1
+      }
+    },
+    "seeds": {
+      "gold:react-responsive-nav-098": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "noop:react-responsive-nav-098": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}
