@@ -51,6 +51,9 @@ Integrity / Build / Start / 隐藏 Playwright 功能 / 视觉 / 响应式 / 可�
 Gold / Alternative / Mutation 校准、确定性重复比较、seed 批次与 success@k 对比、
 Suite 发布门禁，以及 10 个已校准任务（`datasets/tasks/`，D8 分布，`datasets/suites/mvp-regression.json`）。
 
+V7.1：第一个真实 Agent Adapter（`packages/adapter-opencode`，通过 OpenCode CLI 接任意 provider/model），
+已用 `rundao/public/kimi-k3` 在 react-orders-filter-017 上跑出 solved=true。
+
 ## 环境要求
 
 - Node 26（使用 `node:sqlite`）、pnpm 10。
@@ -71,6 +74,10 @@ pnpm eval run create datasets/tasks/react-orders-filter-017 --seed 7 --sandbox d
 pnpm eval run execute <run-id> --agent mock --mock-scenario reference:gold --sandbox docker
 pnpm eval run show <run-id>                    # Result、Attempt、评测器结果、Artifact
 pnpm eval run export --audience requester <run-id>
+
+# 真实 Agent（OpenCode，需本机已安装并配置好 provider；API key 只存在于 ~/.config/opencode，不进入仓库或 Artifact）
+pnpm eval run create datasets/tasks/react-orders-filter-017 --seed 1 --sandbox docker --budget-profile agent
+pnpm eval run execute <run-id> --agent opencode --model rundao/public/kimi-k3 --sandbox docker
 
 # 校准一个任务：gold + alternative + 全部 mutation 必须符合各自 expected.json
 pnpm eval calibrate datasets/tasks/react-orders-filter-017 --out reports/react-orders-filter-017.json
@@ -105,8 +112,16 @@ node scripts/scaffold-task.mjs <task-id> "<标题>" <feature|bugfix|visual|async
 ## Run 命令
 
 ```bash
-pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--db <path>]
-pnpm eval run execute <run-id> --agent mock [--sandbox fake|docker] [--db <path>]
+pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--db <path>]
+pnpm eval run execute <run-id> --agent mock [--mock-scenario <s>] [--sandbox fake|docker] [--db <path>]
+pnpm eval run execute <run-id> --agent opencode --model <provider/model> [--variant <v>] --sandbox docker [--db <path>]
+```
+
+`--budget-profile agent` 放宽 Task 为 Mock 设定的预算（墙钟 ≥900s、步数 ≥200、成本 ≥$5、工具输出 32 MiB），并记录进不可变的 Run 输入，
+只有相同 profile 的 Run 可比。OpenCode Adapter 把公开工作区经 Tool Router 镜像到宿主临时目录、运行真实 Agent、再把所有改动经
+`write_file`/`run_command` 回放进沙箱——补丁与评测始终以沙箱为准；已知限制：Agent 自己的 shell 自检在宿主副本上执行，不在沙箱内。
+
+```bash
 pnpm eval run show <run-id> [--db <path>]
 pnpm eval run show --repair <run-id> [--db <path>]
 ```
