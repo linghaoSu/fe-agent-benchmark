@@ -484,8 +484,8 @@ const CREDENTIAL_PATTERNS = [
   {
     kind: "credential",
     // Any 12+ char value counts, except a bare dotted member reference such as `MESSAGES.password`
-    // or `values.password` — code that names a field, not a secret.
-    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*(?!["']?[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$.]*\s*(?:\(|[;,)]|$)|\s*\())["']?[A-Za-z0-9_./+=-]{12,}/gi,
+    // or `values.password ?? ""` — code that names a field, not a secret.
+    pattern: /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password)\b["']?\s*[:=]\s*(?!["']?[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$.]*\s*(?:\(|[;,)\]}]|\?\?|\|\||&&|[?:+]|$)|\s*\())["']?[A-Za-z0-9_./+=-]{12,}/gi,
   },
 ];
 

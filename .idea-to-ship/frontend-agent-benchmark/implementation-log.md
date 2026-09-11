@@ -744,3 +744,20 @@
   `OPENCODE_BINARY`) that writes gold `src/` → solved, usage recorded, patch
   contains both changed files, every tool call TOOL_SUCCEEDED, scratch path
   absent from events. V7.1-002 covers budget-profile recording.
+
+### Kimi K3 sweep (seed 1, all 10 tasks) and two harness fixes
+
+9/10 solved on the first pass. The one failure exposed a harness bug, not a
+model bug: the Adapter host redacted **inbound frames before routing**, so a
+`write_file` whose content contained `const password = values.password ?? ""`
+reached the sandbox as `const [REDACTED:credential] ?? ""` and the Build gate
+failed on a syntax error. Fixes: (1) tools now execute on the Adapter's raw
+arguments — redaction is a persistence concern and the Tool Router already
+redacts everything it records; (2) the credential heuristic's member-reference
+exception also accepts `??`, `||`, `&&`, `? :`, `+`, `]`, `}` after the
+reference. GATE-V2.2-006 still proves no secret reaches disk.
+
+Re-run of react-form-validation-065 (seed 2): build passes; Kimi genuinely
+fails `empty-submit-shows-all-errors` (its `confirm !== password` treats two
+empty fields as matching, so only 3 of 4 errors render). Result 9/10 solved,
+per-task 13–26k input / 1–4k output tokens, 60–135 s wall.

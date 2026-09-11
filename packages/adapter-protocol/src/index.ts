@@ -424,7 +424,9 @@ export class SubprocessAdapterHost {
           armWallTimeBudget();
         } else if (safeFrame.type === "tool_request") {
           const payload = safeFrame.payload as { toolCallId: string; arguments: Record<string, unknown> };
-          const routed = await (this.options.toolHandler?.(safeFrame) ?? { echo: payload.arguments });
+          // Tools execute on the Adapter's exact arguments: redaction is a persistence concern (the Tool Router
+          // redacts what it records), and rewriting e.g. `write_file` content would corrupt the workspace.
+          const routed = await (this.options.toolHandler?.(frame) ?? { echo: payload.arguments });
           if (failure) return;
           if ("kind" in routed && routed.kind === "budget_exhausted") {
             const budget = routed as Extract<RoutedToolResponse, { kind: "budget_exhausted" }>;
