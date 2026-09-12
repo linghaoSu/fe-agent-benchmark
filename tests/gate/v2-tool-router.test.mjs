@@ -301,7 +301,7 @@ test("GATE-V2.2-007: Adapter host env is allowlisted and network overrides are r
     const envEvent = isolated.frames.map(({ frameJson }) => JSON.parse(frameJson))
       .find((frame) => frame.type === "event" && frame.payload.name === "mock_env");
     const allowed = new Set([
-      "FAB_RUN_ID", "FAB_ATTEMPT_ID", "LANG", "LC_ALL", "TZ", "__CF_USER_TEXT_ENCODING",
+      "FAB_RUN_ID", "FAB_ATTEMPT_ID", "FAB_MAX_FRAME_BYTES", "LANG", "LC_ALL", "TZ", "__CF_USER_TEXT_ENCODING",
     ]);
     assert.equal(
       envEvent.payload.data.keys.every((key) => allowed.has(key)),

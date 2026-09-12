@@ -334,6 +334,7 @@ export class SubprocessAdapterHost {
         ...this.options.command.env,
         FAB_RUN_ID: input.runId,
         FAB_ATTEMPT_ID: input.attemptId,
+        FAB_MAX_FRAME_BYTES: String(this.codec.maxFrameBytes),
       },
       stdio: ["pipe", "pipe", "pipe"],
     }) as ChildProcessWithoutNullStreams;

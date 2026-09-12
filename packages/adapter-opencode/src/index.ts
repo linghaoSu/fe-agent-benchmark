@@ -65,7 +65,8 @@ function parseOptions(argv: string[]): Options {
 }
 
 const options = parseOptions(process.argv.slice(2));
-const codec = new FrameCodec();
+// The host announces its frame cap (agent profile: 1 MiB) so base64 images fit in one tool_result.
+const codec = new FrameCodec(Number(process.env.FAB_MAX_FRAME_BYTES) || undefined);
 let seq = 0;
 let taskId = "";
 let taskVersion = 0;
