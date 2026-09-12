@@ -157,15 +157,91 @@ export interface PreflightedTaskBundle {
   visualMismatchThreshold?: number;
   criticalFunctionalTests: boolean;
   network: TaskNetwork;
+  packageManager: "npm" | "pnpm";
   /** Snapshot-derived; absent for `network: open` Tasks, which install from the public registry. */
   dependencyLockHash?: string;
   dependencyCacheSnapshotId?: string;
   proxyConfigurationHash?: string;
   mockApi?: { image: string; command: string[]; port: number };
   packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory?: string };
+  design?: TaskDesign;
 }
 
 export type TaskNetwork = "controlled-proxy" | "open";
+export type DesignMode = "sketch" | "image" | "both";
+export const DESIGN_MODES: readonly DesignMode[] = ["sketch", "image", "both"];
+
+export interface TaskDesign {
+  sketchSpec?: string;
+  images: string[];
+  modes: DesignMode[];
+}
+
+/** Bundle-relative design files the given mode withholds from the Agent's public workspace. */
+export function designPathsHiddenByMode(design: TaskDesign, mode: DesignMode): string[] {
+  return [
+    ...(mode === "image" && design.sketchSpec ? [design.sketchSpec] : []),
+    ...(mode === "sketch" ? design.images : []),
+  ];
+}
+
+function designOf(value: unknown): TaskDesign | undefined {
+  if (!isRecord(value)) return undefined;
+  const images = Array.isArray(value.images) ? value.images.filter((item): item is string => typeof item === "string") : [];
+  const modes = Array.isArray(value.modes)
+    ? value.modes.filter((item): item is DesignMode => (DESIGN_MODES as readonly unknown[]).includes(item))
+    : [...DESIGN_MODES];
+  return {
+    ...(typeof value.sketchSpec === "string" ? { sketchSpec: value.sketchSpec } : {}),
+    images,
+    modes,
+  };
+}
+
+function preflightDesign(bundlePath: string, task: Record<string, unknown>): PreflightResult | undefined {
+  if (task.design === undefined) return undefined;
+  const taskFile = "task.yaml";
+  const design = designOf(task.design)!;
+  const permissions = isRecord(task.permissions) ? task.permissions : {};
+  const prefixes = (value: unknown) => writablePathPrefixes(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []) ?? [];
+  const writable = prefixes(permissions.writablePaths);
+  const forbidden = prefixes(permissions.forbiddenPaths);
+  const files: Array<{ path: string; location: string; kind: "spec" | "image" }> = [
+    ...(design.sketchSpec ? [{ path: design.sketchSpec, location: "/design/sketchSpec", kind: "spec" as const }] : []),
+    ...design.images.map((path, index) => ({ path, location: `/design/images/${index}`, kind: "image" as const })),
+  ];
+  for (const file of files) {
+    if (file.path.split("/").some((segment) => segment === "." || segment === "..")) {
+      return reject({ code: "DESIGN_ASSET_INVALID", file: taskFile, location: file.location, message: `Design asset ${file.path} must be a plain bundle-relative path` });
+    }
+    let content: Buffer;
+    try {
+      if (!lstatSync(join(bundlePath, file.path)).isFile()) throw new Error("not a regular file");
+      content = readFileSync(join(bundlePath, file.path));
+    } catch {
+      return reject({ code: "DESIGN_ASSET_MISSING", file: file.path, location: file.location, message: `Design asset ${file.path} is missing from the Task Bundle` });
+    }
+    if (file.kind === "spec") {
+      try { JSON.parse(content.toString("utf8")); } catch {
+        return reject({ code: "DESIGN_ASSET_INVALID", file: file.path, location: file.location, message: `Design spec ${file.path} is not valid JSON` });
+      }
+    } else if (!content.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      return reject({ code: "DESIGN_ASSET_INVALID", file: file.path, location: file.location, message: `Design image ${file.path} is not a PNG` });
+    }
+    // Design assets are agent-visible references: a writable prefix could let the Agent alter them and a
+    // forbidden prefix would hide them from read_file.
+    const covered = [...writable, ...forbidden].find((prefix) => file.path === prefix || file.path.startsWith(`${prefix}/`));
+    if (covered) {
+      return reject({ code: "DESIGN_ASSET_INVALID", file: taskFile, location: file.location, message: `Design asset ${file.path} must not be under writable or forbidden path ${covered}/**` });
+    }
+  }
+  for (const mode of design.modes) {
+    if ((mode !== "image" && !design.sketchSpec) || (mode !== "sketch" && design.images.length === 0)) {
+      return reject({ code: "DESIGN_MODE_UNSUPPORTED", file: taskFile, location: "/design/modes", message: `Design mode ${mode} needs ${mode === "sketch" ? "design.sketchSpec" : mode === "image" ? "design.images" : "both design.sketchSpec and design.images"}` });
+    }
+  }
+  return undefined;
+}
 
 export function writablePathPrefixes(patterns: string[]): string[] | undefined {
   const prefixes: string[] = [];
@@ -684,6 +760,9 @@ export function preflightTaskBundle(bundlePath: string): PreflightResult {
     });
   }
 
+  const designRejection = preflightDesign(bundlePath, loadedTask.document);
+  if (designRejection) return designRejection;
+
   const environment = loadedTask.document.environment;
   const declaredManager = isRecord(environment) ? environment.packageManager : undefined;
   const manager = typeof declaredManager === "string"
@@ -857,6 +936,7 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
   const commands = task.commands;
   const evaluation = task.evaluation;
   const extensions = task.extensions;
+  const design = designOf(task.design);
   const network = isRecord(environment) ? environment.network : undefined;
   const snapshotReference = isRecord(extensions)
     ? extensions.dependencyCacheSnapshot
@@ -936,6 +1016,7 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
       ? { visualMismatchThreshold: evaluation.visual.mismatchThreshold } : {}),
     criticalFunctionalTests: isRecord(evaluation) && isRecord(evaluation.requiredGates) && evaluation.requiredGates.criticalFunctionalTests === true,
     network,
+    packageManager: packageManagerName(String(environment.packageManager)) ?? "npm",
     ...(snapshot ? {
       dependencyLockHash: snapshot.lockfileHash as string,
       dependencyCacheSnapshotId: snapshot.dependencyCacheSnapshotId as string,
@@ -966,5 +1047,6 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
             : {}),
         } }
       : {}),
+    ...(design ? { design } : {}),
   };
 }

@@ -345,13 +345,19 @@ function fixtureDirectory(bundlePath: string, directory: string): string {
   return source;
 }
 
-// The rootfs is read-only, so npm's cache/logs must live on the /tmp tmpfs.
+// The rootfs is read-only, so npm's cache/logs, corepack's shim cache and pnpm's content store must live on the /tmp tmpfs.
 const NPM_ENVIRONMENT: Record<string, string> = {
   npm_config_cache: "/tmp/.npm",
   npm_config_update_notifier: "false",
   npm_config_audit: "false",
   npm_config_fund: "false",
   HOME: "/tmp",
+};
+// npm 11 warns on unknown `npm_config_*` keys, so pnpm's store only appears for pnpm Tasks.
+const PNPM_ENVIRONMENT: Record<string, string> = {
+  npm_config_store_dir: "/tmp/.pnpm-store",
+  COREPACK_HOME: "/tmp/.corepack",
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
 };
 
 function registryEnvironment(port: number): Record<string, string> {
@@ -381,6 +387,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     services?: { mockApi?: ServiceConfig; packageProxy?: ServiceConfig };
     /** `open` always attaches the Attempt to a non-internal network so `npm ci` reaches the public registry. */
     network?: "controlled-proxy" | "open";
+    packageManager?: "npm" | "pnpm";
     excludedBundlePaths?: string[];
     playwrightImage?: string;
     playwrightRuntimePath?: string;
@@ -399,6 +406,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     this.resources = { ...DEFAULT_RESOURCES, ...options.resources };
     this.services = options.services;
     this.network = options.network ?? "controlled-proxy";
+    this.packageManager = options.packageManager ?? "npm";
     if (this.network === "open" && this.services?.packageProxy) {
       throw new SandboxDockerError(SANDBOX_START_FAILED, "An open-network Task must not declare a package proxy");
     }
@@ -420,6 +428,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
   private readonly playwrightImage: string;
   private readonly playwrightRuntimePath: string | undefined;
   private readonly appNetwork: boolean;
+  private readonly packageManager: "npm" | "pnpm";
 
   async start(context: SandboxAttemptContext): Promise<void> {
     if (!PINNED_IMAGE.test(this.imageReference)) {
@@ -516,7 +525,7 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
         ...(state.networkId && (this.network !== "open" || this.services?.mockApi) ? { extraHosts: state.serviceHosts } : {}),
         ...(state.networkId && this.network !== "open" ? { dns: ["127.0.0.1"] } : {}),
         ...(state.networkId && this.appNetwork ? { networkAliases: ["app"] } : {}),
-        ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : this.network === "open" ? { environment: NPM_ENVIRONMENT } : {}),
+        ...(this.services?.packageProxy ? { environment: registryEnvironment(this.services.packageProxy.port) } : this.network === "open" ? { environment: { ...NPM_ENVIRONMENT, ...(this.packageManager === "pnpm" ? PNPM_ENVIRONMENT : {}) } } : {}),
         readOnlyRootfs: true,
         noNewPrivileges: true,
         resources: this.resources,
@@ -540,12 +549,18 @@ export class DockerSandboxRuntime implements WorkspaceRunner {
     const state = this.activeState();
     let result: DockerExecResult;
     if (tool === "read_file") {
+      // `encoding: "base64"` serves binary design assets (PNG) as text so router budgets and redaction apply
+      // unchanged; base64 inflates ~1.33x, so adapters should request images one at a time to stay under the
+      // inline cap (oversized output still spills to an Artifact).
+      const base64 = arguments_.encoding === "base64";
       result = await this.client.execContainer(state.containerId!, {
         user: "1000:1000",
         workdir: "/workspace",
         command: [
           "node", "-e",
-          "process.stdout.write(require('node:fs').readFileSync(process.argv[1]))",
+          base64
+            ? "process.stdout.write(require('node:fs').readFileSync(process.argv[1]).toString('base64'))"
+            : "process.stdout.write(require('node:fs').readFileSync(process.argv[1]))",
           workspacePath(arguments_.path),
         ],
       });

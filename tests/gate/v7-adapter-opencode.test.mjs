@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { deflateSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -22,10 +24,15 @@ const json = (r) => { assert.equal(r.status, 0, r.stderr || r.stdout); return JS
 function fakeOpencode(root) {
   const bin = join(root, "opencode");
   writeFileSync(bin, `#!/usr/bin/env node
-const fs = require("node:fs"); const path = require("node:path");
+const fs = require("node:fs"); const path = require("node:path"); const crypto = require("node:crypto");
 const dir = process.argv[process.argv.indexOf("--dir") + 1];
 fs.cpSync(${JSON.stringify(goldSrc)}, path.join(dir, "src"), { recursive: true });
 fs.writeFileSync(path.join(dir, "src", "notes.txt"), "scratch\\n");
+// Design renderings must arrive byte-exact; the prompt must point the model at them.
+if (fs.existsSync(path.join(dir, "design", "mock.png"))) {
+  fs.writeFileSync(path.join(dir, "src", "design-sha.txt"), crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, "design", "mock.png"))).digest("hex") + "\\n");
+  fs.writeFileSync(path.join(dir, "src", "prompt.txt"), process.argv[process.argv.length - 1]);
+}
 process.stdout.write(JSON.stringify({ type: "tool_use", part: { tool: "write", state: { status: "completed", input: { filePath: path.join(dir, "src/app.js") } } } }) + "\\n");
 process.stdout.write(JSON.stringify({ type: "step_finish", part: { reason: "stop", tokens: { input: 1234, output: 56, reasoning: 7 }, cost: 0.01 } }) + "\\n");
 process.stdout.write(JSON.stringify({ type: "text", part: { text: "done" } }) + "\\n");
@@ -55,6 +62,49 @@ test("GATE-V7.1-Docker: OpenCode adapter mirrors the workspace, replays changes 
     const events = readFileSync(join(root, created.runId, "attempts", "1", "agent-events.jsonl"), "utf8");
     assert.match(events, /opencode_workspace_mirrored/); assert.match(events, /opencode_finished/);
     assert.doesNotMatch(events, new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "scratch path must not leak into events");
+  } finally { removeTree(root); }
+});
+
+/** Minimal valid 2x2 RGBA PNG (not a text file: contains NUL bytes and invalid UTF-8, so a utf8 round-trip would corrupt it). */
+function tinyPng() {
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+    let crc = 0xffffffff; for (const byte of body) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    const length = Buffer.alloc(4); length.writeUInt32BE(data.length); const crcBuf = Buffer.alloc(4); crcBuf.writeUInt32BE((crc ^ 0xffffffff) >>> 0);
+    return Buffer.concat([length, body, crcBuf]);
+  };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(2, 0); ihdr.writeUInt32BE(2, 4); ihdr[8] = 8; ihdr[9] = 6;
+  const raw = Buffer.from([0, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 0, 255, 255, 0xfe, 0x80, 0x10, 255]);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+}
+
+test("GATE-V9.1-Docker: OpenCode adapter mirrors design/*.png byte-exactly via base64 read_file, lists them in the prompt and never replays them", { skip: unavailable, timeout: 900_000 }, () => {
+  const root = mkdtempSync(join(tmpdir(), "fab-opencode-design-"));
+  const db = join(root, "eval.sqlite");
+  try {
+    const bundle = join(root, "task");
+    cpSync(task, bundle, { recursive: true });
+    mkdirSync(join(bundle, "design"));
+    const png = tinyPng();
+    writeFileSync(join(bundle, "design", "mock.png"), png);
+    writeFileSync(join(bundle, "design", "page.json"), JSON.stringify({ layers: [] }));
+    writeFileSync(join(bundle, "task.yaml"), readFileSync(join(bundle, "task.yaml"), "utf8") + "design:\n  sketchSpec: design/page.json\n  images: [design/mock.png]\n");
+    const created = json(cli("run", "create", bundle, "--seed", "11", "--sandbox", "docker", "--budget-profile", "agent", "--design-mode", "both", "--db", db));
+    const executed = spawnSync("pnpm", ["eval", "run", "execute", created.runId, "--agent", "opencode", "--model", "fake/model", "--sandbox", "docker", "--db", db], { cwd: repoRoot, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, OPENCODE_BINARY: fakeOpencode(root) } });
+    assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    const shown = json(cli("run", "show", created.runId, "--db", db));
+    assert.equal(shown.run.status, "COMPLETED");
+    const patch = readFileSync(join(root, created.runId, "attempts", "1", "patch.diff"), "utf8");
+    assert.match(patch, new RegExp(`\\+${createHash("sha256").update(png).digest("hex")}`), "fake opencode must see the PNG byte-exactly");
+    assert.doesNotMatch(patch, /^(\+\+\+|diff --git) .*design\/mock\.png/m, "binaries are never replayed back");
+    assert.match(patch, /\+设计资料/); assert.match(patch, /\+- design\/mock\.png：设计图，请用 read 工具查看/); assert.match(patch, /\+- design\/page\.json：结构化设计描述（来自 Sketch/);
+    const reads = shown.toolCalls.filter((c) => c.tool === "read_file").map((c) => JSON.parse(c.argumentsJson));
+    assert.deepEqual(reads.find((a) => a.path === "design/mock.png"), { path: "design/mock.png", encoding: "base64" });
+    assert.deepEqual(reads.find((a) => a.path === "design/page.json"), { path: "design/page.json" });
+    assert.ok(shown.toolCalls.every((c) => c.outcomeCode === "TOOL_SUCCEEDED"));
+    const events = readFileSync(join(root, created.runId, "attempts", "1", "agent-events.jsonl"), "utf8");
+    assert.match(events, /"opencode_workspace_mirrored".*"images":1/);
   } finally { removeTree(root); }
 });
 

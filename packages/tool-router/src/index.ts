@@ -171,9 +171,9 @@ export function resolveToolPolicy(input: {
 }
 
 export class FakeWorkspaceRunner implements WorkspaceRunner {
-  private readonly files = new Map<string, string>();
+  private readonly files = new Map<string, string | Buffer>();
 
-  constructor(initialFiles: Record<string, string> = {}) {
+  constructor(initialFiles: Record<string, string | Buffer> = {}) {
     for (const [path, content] of Object.entries(initialFiles)) this.files.set(path, content);
   }
 
@@ -188,7 +188,8 @@ export class FakeWorkspaceRunner implements WorkspaceRunner {
     if (tool === "read_file") {
       const path = String(arguments_.path ?? "");
       if (!this.files.has(path)) throw new Error(`File ${path} does not exist`);
-      return this.files.get(path)!;
+      const content = this.files.get(path)!;
+      return arguments_.encoding === "base64" ? Buffer.from(content).toString("base64") : content.toString("utf8");
     }
     if (tool === "write_file") {
       const path = String(arguments_.path ?? "");
@@ -261,7 +262,8 @@ export class ToolExecutor {
       });
     }
     const bytes = Buffer.byteLength(rawOutput);
-    const output = redactCredentials(rawOutput);
+    // base64 is opaque encoded bytes: a regex hit would corrupt the payload, and the source file already passed preflight.
+    const output = input.arguments.encoding === "base64" ? rawOutput : redactCredentials(rawOutput);
     this.outputBytes += bytes;
     if (this.now() - this.startedAtMs >= this.options.budgets.maxWallTimeMs) {
       return this.finishBudget(input, BUDGET_EXHAUSTED_WALL_TIME, bytes);

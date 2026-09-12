@@ -1,0 +1,30 @@
+schemaVersion: 1
+id: design-modes-synthetic
+version: 1
+title: Synthetic design-mode fixture (Vue 3 + dao-style)
+environment:
+  image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+  repositoryCommit: synthetic-commit
+  packageManager: pnpm@10.34.4
+  locale: zh-CN
+  timezone: Asia/Shanghai
+  network: open
+budget: { maxWallTimeSeconds: 60, maxAgentSteps: 8, maxCostUsd: 0 }
+permissions:
+  writablePaths: [src/**]
+  forbiddenPaths: []
+  allowDependencyChanges: false
+commands:
+  install: corepack pnpm install --frozen-lockfile
+  typecheck: corepack pnpm typecheck
+  lint: corepack pnpm lint
+  test: corepack pnpm test
+  build: corepack pnpm build
+  start: corepack pnpm start
+evaluation:
+  requiredGates: { integrity: true, build: true, criticalFunctionalTests: true }
+  weights: { functional: 1, visual: 0, responsive: 0, accessibility: 0, engineering: 0 }
+design:
+  sketchSpec: design/spec.json
+  images: [design/home.png]
+  modes: [sketch, image, both]

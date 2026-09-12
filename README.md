@@ -86,6 +86,10 @@ pnpm eval run export --audience requester <run-id>
 pnpm eval run create datasets/tasks/react-orders-filter-017 --seed 1 --sandbox docker --budget-profile agent
 pnpm eval run execute <run-id> --agent opencode --model rundao/public/kimi-k3 --sandbox docker
 
+# 带设计资料的任务：--design-mode 决定 Agent 看到 Sketch 结构化描述、设计图还是两者
+pnpm eval run create datasets/tasks/<dao-task> --seed 1 --sandbox docker --budget-profile agent --design-mode image
+pnpm eval run execute <run-id> --agent opencode --model github-copilot/gpt-6-astra --sandbox docker
+
 # 校准一个任务：gold + alternative + 全部 mutation 必须符合各自 expected.json
 pnpm eval calibrate datasets/tasks/react-orders-filter-017 --out reports/react-orders-filter-017.json
 
@@ -129,7 +133,7 @@ node scripts/scaffold-task.mjs <task-id> "<标题>" <feature|bugfix|visual|async
 ## Run 命令
 
 ```bash
-pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--db <path>]
+pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--design-mode sketch|image|both] [--db <path>]
 pnpm eval run execute <run-id> --agent mock [--mock-scenario <s>] [--sandbox fake|docker] [--db <path>]
 pnpm eval run execute <run-id> --agent opencode --model <provider/model> [--variant <v>] --sandbox docker [--db <path>]
 ```
@@ -137,6 +141,9 @@ pnpm eval run execute <run-id> --agent opencode --model <provider/model> [--vari
 `--budget-profile agent` 放宽 Task 为 Mock 设定的预算（墙钟 ≥900s、步数 ≥200、成本 ≥$5、工具输出 32 MiB），并记录进不可变的 Run 输入，
 只有相同 profile 的 Run 可比。OpenCode Adapter 把公开工作区经 Tool Router 镜像到宿主临时目录、运行真实 Agent、再把所有改动经
 `write_file`/`run_command` 回放进沙箱——补丁与评测始终以沙箱为准；已知限制：Agent 自己的 shell 自检在宿主副本上执行，不在沙箱内。
+任务声明 `design`（`sketchSpec` JSON 与/或 `images` PNG）时，`--design-mode` 写入不可变 Run 输入，只有相同模式的 Run 可比；
+被模式隐藏的文件不出现在沙箱工作区。Adapter 以 base64 镜像 `design/` 下的图片（字节精确、只读、不回放），并在提示中列出设计资料，
+提示 Agent 用 read 工具查看设计图并使用 @dao-style/core 组件；pnpm 项目（`pnpm-lock.yaml`）的宿主自检依赖通过 `corepack pnpm install --frozen-lockfile` 安装。
 
 ```bash
 pnpm eval run show <run-id> [--db <path>]

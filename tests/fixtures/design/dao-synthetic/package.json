@@ -1,0 +1,7 @@
+{
+  "name": "design-modes-synthetic",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.4",
+  "dependencies": { "left-pad": "1.3.0" }
+}

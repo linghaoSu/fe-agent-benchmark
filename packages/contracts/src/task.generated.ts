@@ -75,5 +75,10 @@ export type FrontendAgentEvaluationTask = {
     };
     "hiddenBundle"?: string;
   };
+  "design"?: ({
+    "sketchSpec"?: string;
+    "images"?: Array<string>;
+    "modes"?: Array<"sketch" | "image" | "both">;
+  }) & ((unknown) | (unknown));
   "extensions"?: Record<string, unknown>;
 };

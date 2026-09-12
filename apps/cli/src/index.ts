@@ -25,8 +25,10 @@ import {
   preflightTaskBundle,
   readPreflightedTaskBundle,
   containsObviousCredential,
+  designPathsHiddenByMode,
   validateContractDocument,
   validateContractFile,
+  type DesignMode,
   type FrontendAgentEvaluationResult,
 } from "@frontend-agent-benchmark/contracts";
 import {
@@ -86,7 +88,7 @@ const usage = [
   "Usage: pnpm eval validate <path>",
   "pnpm eval checksum <task-dir-or-task-yaml>",
   "pnpm eval preflight <task-dir>",
-  "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--db <path>]",
+  "pnpm eval run create <task-dir> --seed <n> [--sandbox fake|docker] [--budget-profile task|agent] [--design-mode sketch|image|both] [--db <path>]",
   "pnpm eval run execute <run-id> [--agent mock] [--mock-scenario build-pass|build-break|functional-break|forbidden-write|react-orders-gold|react-orders-noop|react-orders-mutation-overflow|reference:<name>] [--evaluators noop|pipeline] [--sandbox fake|docker] [--db <path>] | pnpm eval run execute <run-id> --agent opencode --model <provider/model> [--variant <v>] --sandbox docker [--db <path>]",
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
@@ -431,8 +433,8 @@ function compareRuns(arguments_: string[]): boolean {
         };
       });
       // Samples in one configuration must be comparable: same Task version and environment, distinct seeds.
-      const inputs = runIds.map((runId) => { const run = store.runs.find(runId)!; const resolved = JSON.parse(run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string; network?: string }; return { runId, taskId: run.taskId, taskVersion: run.taskVersion, imageDigest: resolved.sandbox?.imageDigest, snapshot: resolved.dependencyCacheSnapshotId, network: resolved.network, seed: run.seedSet[0] }; });
-      const fingerprints = new Set(inputs.map((i) => `${i.taskId}@${i.taskVersion}|${i.imageDigest ?? ""}|${i.snapshot ?? ""}|${i.network ?? ""}`));
+      const inputs = runIds.map((runId) => { const run = store.runs.find(runId)!; const resolved = JSON.parse(run.resolvedInputJson) as { sandbox?: { imageDigest?: string }; dependencyCacheSnapshotId?: string; network?: string; designMode?: string }; return { runId, taskId: run.taskId, taskVersion: run.taskVersion, imageDigest: resolved.sandbox?.imageDigest, snapshot: resolved.dependencyCacheSnapshotId, network: resolved.network, designMode: resolved.designMode, seed: run.seedSet[0] }; });
+      const fingerprints = new Set(inputs.map((i) => `${i.taskId}@${i.taskVersion}|${i.imageDigest ?? ""}|${i.snapshot ?? ""}|${i.network ?? ""}|${i.designMode ?? ""}`));
       if (fingerprints.size !== 1) throw new Error(`--config ${configurationId} mixes Runs of different tasks or environments: ${[...fingerprints].join(" vs ")}`);
       if (new Set(inputs.map((i) => i.seed)).size !== inputs.length) throw new Error(`--config ${configurationId} repeats a seed; repeated seeds are not independent samples`);
       return { configurationId, runs };
@@ -618,7 +620,7 @@ function createRun(arguments_: string[]): boolean {
     || parsed.positionals.length !== 1
     || typeof parsed.options["--seed"] !== "string"
     || Object.keys(parsed.options).some((option) => (
-      option !== "--seed" && option !== "--sandbox" && option !== "--db" && option !== "--budget-profile"
+      option !== "--seed" && option !== "--sandbox" && option !== "--db" && option !== "--budget-profile" && option !== "--design-mode"
     ))
     || (parsed.options["--sandbox"] !== undefined
       && parsed.options["--sandbox"] !== "fake"
@@ -646,6 +648,29 @@ function createRun(arguments_: string[]): boolean {
   }
 
   const metadata = readPreflightedTaskBundle(taskDirectory);
+  // The design mode fixes which assets the Agent sees; it is part of the immutable input so Runs compare within a mode.
+  const designMode = parsed.options["--design-mode"] as string | undefined;
+  if (metadata.design) {
+    if (parsed.options["--sandbox"] !== "docker") {
+      console.log(JSON.stringify({ code: "DESIGN_MODE_UNSUPPORTED", message: `Task ${metadata.taskId} ships design assets; only --sandbox docker can hide assets by design mode` }));
+      process.exitCode = 1;
+      return true;
+    }
+    if (designMode === undefined) {
+      console.log(JSON.stringify({ code: "DESIGN_MODE_REQUIRED", message: `Task ${metadata.taskId} ships design assets; pass --design-mode ${metadata.design.modes.join("|")}` }));
+      process.exitCode = 1;
+      return true;
+    }
+    if (!(metadata.design.modes as string[]).includes(designMode)) {
+      console.log(JSON.stringify({ code: "DESIGN_MODE_UNSUPPORTED", message: `Task ${metadata.taskId} supports design modes ${metadata.design.modes.join(", ")}, not ${designMode}` }));
+      process.exitCode = 1;
+      return true;
+    }
+  } else if (designMode !== undefined) {
+    console.log(JSON.stringify({ code: "DESIGN_MODE_NOT_APPLICABLE", message: `Task ${metadata.taskId} declares no design assets; --design-mode does not apply` }));
+    process.exitCode = 1;
+    return true;
+  }
   const sandboxRunner = parsed.options["--sandbox"] === "docker" ? "docker" : "fake";
   const imageReference = resolvePinnedImageReference({
     taskImage: metadata.environmentImage,
@@ -680,6 +705,8 @@ function createRun(arguments_: string[]): boolean {
     proxyConfigurationHash: metadata.proxyConfigurationHash,
     networkPolicyId: `network-policy:${checksum.bundleChecksum}`,
     network: metadata.network,
+    packageManager: metadata.packageManager,
+    ...(metadata.design ? { design: metadata.design, designMode: designMode as DesignMode } : {}),
     services: {
       ...(metadata.mockApi ? { mockApi: metadata.mockApi } : {}),
       ...(metadata.packageProxy ? { packageProxy: metadata.packageProxy } : {}),
@@ -854,6 +881,9 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
         resources: { memoryBytes: number; cpus: number; pidsLimit: number };
       };
       network?: "controlled-proxy" | "open";
+      packageManager?: "npm" | "pnpm";
+      design?: { sketchSpec?: string; images: string[]; modes: DesignMode[] };
+      designMode?: DesignMode;
       services?: { mockApi?: { image: string; command: string[]; port: number }; packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory: string } };
     };
     const protocol = resolved.adapterProtocol;
@@ -879,11 +909,11 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
           bundlePath: task.path,
           writablePaths: resolved.permissions?.writablePaths ?? [],
           forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [],
-          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], excludedBundlePaths: [...(resolved.evaluation?.hiddenBundle ? [resolved.evaluation.hiddenBundle.split("/")[0]!] : []), "references"],
+          buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], excludedBundlePaths: [...(resolved.evaluation?.hiddenBundle ? [resolved.evaluation.hiddenBundle.split("/")[0]!] : []), "references", ...(resolved.design && resolved.designMode ? designPathsHiddenByMode(resolved.design, resolved.designMode) : [])],
           resources: resolved.sandbox!.resources,
           commandTimeoutMs: (resolved.budgets?.maxWallTimeSeconds ?? 30) * 1_000,
           services: resolved.services,
-          network: resolved.network,
+          network: resolved.network, packageManager: resolved.packageManager,
         })
       : undefined;
     const agentCommand = parsed.options["--agent"] === "opencode"
@@ -896,6 +926,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
             ...(resolved.network === "open" ? [] : ["--fixtures", join(task.path, "fixtures")]),
             "--max-runtime-ms", String((resolved.budgets?.maxWallTimeSeconds ?? 900) * 1_000 - 60_000),
             "--network", resolved.network ?? "controlled-proxy",
+            ...(resolved.design ? ["--design", JSON.stringify({ ...resolved.design, mode: resolved.designMode })] : []),
             ...(typeof parsed.options["--variant"] === "string" ? ["--variant", parsed.options["--variant"] as string] : []),
           ],
           // OpenCode needs its own config/auth and the PATH to find `opencode`; nothing task-specific leaks in.
@@ -947,7 +978,7 @@ async function executeRun(arguments_: string[]): Promise<boolean> {
     const evaluator = evaluatorMode === "pipeline" ? new PipelineEvaluationPhase({
       artifacts,
       snapshotPath: (context) => `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/snapshot`,
-      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services, network: resolved.network, playwrightRuntimePath: PLAYWRIGHT_RUNTIME_PATH, appNetwork: Boolean(resolved.evaluation?.appPort) }),
+      runtime: (_context, workspace) => new DockerSandboxRuntime({ imageReference: resolved.sandbox!.imageReference, bundlePath: workspace, writablePaths: resolved.permissions?.writablePaths ?? [], forbiddenPaths: resolved.permissions?.forbiddenPaths ?? [], buildOutputPaths: resolved.evaluation?.buildOutputPaths ?? [], resources: resolved.sandbox!.resources, commandTimeoutMs: EVALUATION_COMMAND_TIMEOUT_MS, services: resolved.services, network: resolved.network, packageManager: resolved.packageManager, playwrightRuntimePath: PLAYWRIGHT_RUNTIME_PATH, appNetwork: Boolean(resolved.evaluation?.appPort) }),
       // An Attempt with no workspace changes stages no patch.diff; integrity then evaluates an empty patch.
       patch: (context) => {
         const path = `${artifacts.attemptStagingDirectory(context.runId, context.attemptId)}/patch.diff`;

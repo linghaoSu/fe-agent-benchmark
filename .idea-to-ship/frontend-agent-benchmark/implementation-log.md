@@ -816,3 +816,27 @@ per-task 13–26k input / 1–4k output tokens, 60–135 s wall.
   1.26.2 needs `monaco-editor` (peer, not installed) and monaco 0.56's exports break the import; pinning
   `monaco-editor@0.52.2` fixes it.
 - Usage: `pnpm dashboard:server` (port 8788) and `pnpm dashboard` (port 8790, proxies /api).
+
+## 2026-09-12 — V9.1 design assets and design modes (foundation for realistic dao tasks)
+
+- Task contract: optional `design { sketchSpec?, images?, modes? }` (at least one asset; plain bundle-relative
+  paths, no dot segments; assets may not sit under writable or forbidden prefixes). Preflight checks the files
+  exist, the spec parses as JSON, images carry the PNG magic, and every declared mode has assets to show
+  (`DESIGN_ASSET_MISSING` / `DESIGN_ASSET_INVALID` / `DESIGN_MODE_UNSUPPORTED`).
+- Runs: `run create --design-mode sketch|image|both` is required for design Tasks (Docker sandbox only — the
+  fake runner has no workspace to hide assets from), recorded in the immutable input and in the `compare`
+  fingerprint next to network. The agent-phase sandbox physically excludes the assets the mode hides
+  (`designPathsHiddenByMode` → `excludedBundlePaths`); the evaluation runtime sees everything.
+- Tooling: `read_file` accepts `encoding: "base64"`; base64 output is exempt from credential redaction (opaque
+  bytes, preflighted source) but still counted against budgets. pnpm Tasks get `COREPACK_HOME` /
+  `npm_config_store_dir` on /tmp so `corepack pnpm install --frozen-lockfile` works on the read-only rootfs
+  (only injected for `packageManager: pnpm` — npm 11 warns on unknown config keys).
+- OpenCode adapter v2: receives `--design <json>` from the CLI, mirrors images through base64 byte-exactly,
+  never replays them, lists the exposed assets in a 设计资料 prompt section, runs `corepack pnpm install` for
+  pnpm projects, mirrors scss/less/vue/mts sources.
+- `scripts/sketch-extract.mjs`: Sketch artboard → PNG (sketchtool) + compact spec JSON (absolute frames, texts
+  with size/weight/color, symbol master names, string overrides, non-white fills) + reading-order texts.
+  Verified on DCE6.sketch: Step1/2/3 of 创建云原生网关 API (19/38/9 KB specs), 插件列表, 限流规则详情, 网关实例详情.
+- Gates: GATE-V9-001…005 + GATE-V9-Docker (PNG sha256 round-trip, hidden asset absent, corepack pnpm),
+  GATE-V9.1-Docker in the adapter file. Review findings fixed: path traversal in design paths, fake-sandbox
+  mode ignored, adapter hardcoding `design/`, npm store-dir warnings, base64 corruption by redaction.

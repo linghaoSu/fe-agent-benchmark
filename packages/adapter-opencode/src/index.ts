@@ -43,6 +43,8 @@ interface Options {
   variant?: string;
   /** Task network mode; online installs are only attempted for `open` Tasks. */
   network: "controlled-proxy" | "open";
+  /** The Task's declared design assets and the Run's mode; only the assets the mode shows exist in the workspace. */
+  design?: { sketchSpec?: string; images: string[]; mode?: string };
 }
 
 function parseOptions(argv: string[]): Options {
@@ -56,6 +58,7 @@ function parseOptions(argv: string[]): Options {
     else if (flag === "--max-runtime-ms" && value) { options.maxRuntimeMs = Number(value); index += 1; }
     else if (flag === "--variant" && value) { options.variant = value; index += 1; }
     else if (flag === "--network" && (value === "open" || value === "controlled-proxy")) { options.network = value; index += 1; }
+    else if (flag === "--design" && value) { options.design = JSON.parse(value); index += 1; }
   }
   if (!options.model) throw new Error("--model <provider/model> is required");
   return options;
@@ -104,8 +107,8 @@ async function runCommand(command: string): Promise<string> {
 }
 
 /** Routed read; `undefined` when the file is rejected by policy or too large to travel inline (it then stays untouched). */
-async function readWorkspaceFile(path: string): Promise<string | undefined> {
-  const result = await requestTool("read_file", { path });
+async function readWorkspaceFile(path: string, encoding?: "base64"): Promise<string | undefined> {
+  const result = await requestTool("read_file", encoding ? { path, encoding } : { path });
   if (result.status !== "succeeded") return undefined;
   const output = result.output ?? {};
   if (output.truncated) return undefined;
@@ -115,13 +118,24 @@ async function readWorkspaceFile(path: string): Promise<string | undefined> {
 /** Text files the agent may edit or read: everything the sandbox exposes except dependency/build output. */
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 
-/** Binary/dependency payloads never travel through the mirror (fixtures/ only exists in controlled-proxy bundles). */
+/** Dependency/build payloads never travel through the mirror (fixtures/ only exists in controlled-proxy bundles). */
 const MIRROR_EXCLUDED = /^(fixtures|node_modules|dist)\//;
-const TEXT_EXTENSIONS = /\.(js|mjs|cjs|ts|tsx|jsx|json|yaml|yml|md|html|css|txt|svg|lock|env|mjsx)$|^[^.]+$/i;
+const TEXT_EXTENSIONS = /\.(js|mjs|cjs|mts|cts|ts|tsx|jsx|json|yaml|yml|md|html|css|scss|sass|less|txt|svg|lock|env|mjsx|vue)$|^[^.]+$/i;
+/** Design renderings: mirrored byte-exactly (read as base64) so a vision model can look at them, never replayed back. */
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|webp)$/i;
+
+function isImage(path: string): boolean {
+  return IMAGE_EXTENSIONS.test(path.split("/").pop() ?? "");
+}
 
 async function listWorkspaceFiles(): Promise<string[]> {
-  const listing = await runCommand("find . -type f -not -path './node_modules/*' -not -path './dist/*' -not -path './.git/*' -not -path './fixtures/*' -size -512k | sed 's#^\\./##' | sort");
-  return listing.split("\n").map((line) => line.trim()).filter((path) => path && !MIRROR_EXCLUDED.test(path) && TEXT_EXTENSIONS.test(path.split("/").pop() ?? ""));
+  // Text must fit the agent-profile inline cap (768 KiB); images inflate 4/3 as base64, hence the tighter bound.
+  const listing = await runCommand("find . -type f -not -path './node_modules/*' -not -path './dist/*' -not -path './.git/*' -not -path './fixtures/*' \\( -size -700k -not \\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \\) -o -size -500k \\) | sed 's#^\\./##' | sort");
+  return listing.split("\n").map((line) => line.trim()).filter((path) => {
+    if (!path || MIRROR_EXCLUDED.test(path)) return false;
+    const name = path.split("/").pop() ?? "";
+    return IMAGE_EXTENSIONS.test(name) || TEXT_EXTENSIONS.test(name);
+  });
 }
 
 function walk(directory: string, base = directory): string[] {
@@ -195,16 +209,45 @@ function installOnline(scratch: string): void {
   send("event", { name: "opencode_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
-function buildPrompt(readme: string): string {
+/** pnpm projects (DAO CLI output): corepack resolves the `packageManager` pin; store and corepack cache stay inside the scratch. */
+function installOnlinePnpm(scratch: string): void {
+  const result = spawnSync("corepack", ["pnpm", "install", "--frozen-lockfile", "--ignore-scripts"], {
+    cwd: scratch, encoding: "utf8", timeout: 300_000,
+    env: { ...process.env, npm_config_store_dir: join(scratch, ".pnpm-store"), COREPACK_HOME: join(scratch, ".corepack"), COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },
+  });
+  for (const cache of [".pnpm-store", ".corepack"]) rmSync(join(scratch, cache), { recursive: true, force: true });
+  send("event", { name: "opencode_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
+}
+
+/** Design assets the Run actually exposes (declared by the Task, filtered by the mode, present in the workspace). */
+function designAssets(files: string[]): string[] {
+  if (!options.design) return [];
+  const declared = [...(options.design.sketchSpec ? [options.design.sketchSpec] : []), ...options.design.images];
+  return declared.filter((path) => files.includes(path));
+}
+
+function describeDesignFiles(files: string[]): string[] {
+  const design = designAssets(files).map((path) => isImage(path) ? `- ${path}：设计图，请用 read 工具查看` : `- ${path}：结构化设计描述（来自 Sketch：图层、文案、坐标、组件名）`);
+  if (design.length === 0) return [];
+  return [
+    "",
+    "设计资料（只读）：",
+    ...design,
+    "请严格按设计资料还原页面（布局、文案、颜色、间距、交互）。",
+  ];
+}
+
+function buildPrompt(readme: string, files: string[], scratch: string): string {
   if (options.promptFile) return readFileSync(options.promptFile, "utf8").replace("{{README}}", readme);
   return [
     "你是一名前端工程师，正在这个仓库中完成下面的需求。仓库已经在当前目录，依赖已安装（node_modules 可用）。",
     "要求：",
     "- 只修改 README 允许的路径；不要修改依赖（package.json / lockfile）、evaluator/ 或 references/。",
     "- 保持现有的 data-testid，README 中提到的 data-testid 必须存在。",
-    "- 完成后运行 `npm test` 与 `node scripts/build.mjs` 确认通过。",
+    `- 完成后运行 package.json 中的 test 与 build 脚本确认通过（${existsSync(join(scratch, "pnpm-lock.yaml")) ? "pnpm 项目，用 `corepack pnpm run <script>`" : "用 `npm run <script>`"}）。`,
     "- 不要留下 console.log 或调试代码。",
     "- 完成后直接结束，不需要长篇解释。",
+    ...describeDesignFiles(files),
     "",
     "需求（README.md）：",
     readme,
@@ -226,12 +269,19 @@ async function main(frame: AdapterFrame): Promise<void> {
   try {
     // 1. Mirror the public workspace through the Tool Router (read policy applies; hidden bundle is not mounted).
     const files = await listWorkspaceFiles();
+    const mirrored: string[] = [];
+    let images = 0;
     for (const path of files) {
-      const content = await readWorkspaceFile(path);
+      const image = isImage(path);
+      const content = await readWorkspaceFile(path, image ? "base64" : undefined);
+      // A design asset that cannot travel inline would silently turn a design Run into a no-design Run.
+      if (content === undefined && designAssets([path]).length) throw new Error(`design asset ${path} could not be mirrored (rejected or too large for the inline tool budget)`);
       if (content === undefined) continue;
-      mirror.set(path, content);
       const target = join(scratch, path);
       mkdirSync(dirname(target), { recursive: true });
+      mirrored.push(path);
+      if (image) { images += 1; writeFileSync(target, Buffer.from(content, "base64")); continue; }
+      mirror.set(path, content);
       writeFileSync(target, content);
     }
     if (options.nodeModulesSource && existsSync(options.nodeModulesSource) && !existsSync(join(scratch, "node_modules"))) {
@@ -243,12 +293,14 @@ async function main(frame: AdapterFrame): Promise<void> {
     } else if (options.network === "open" && existsSync(join(scratch, "package-lock.json"))) {
       // Open-network tasks ship no fixtures: install from the real registry, pinned by lockfile integrity.
       installOnline(scratch);
+    } else if (options.network === "open" && existsSync(join(scratch, "pnpm-lock.yaml"))) {
+      installOnlinePnpm(scratch);
     }
-    send("event", { name: "opencode_workspace_mirrored", data: { files: mirror.size } });
+    send("event", { name: "opencode_workspace_mirrored", data: { files: mirror.size, images } });
 
     // 2. Run the real agent on the scratch copy.
     const readme = mirror.get("README.md") ?? "";
-    const result = await runOpenCode(scratch, buildPrompt(readme), usage, startedAt + options.maxRuntimeMs);
+    const result = await runOpenCode(scratch, buildPrompt(readme, mirrored, scratch), usage, startedAt + options.maxRuntimeMs);
     if (result.stderr) process.stderr.write(result.stderr.slice(-8_192));
     send("event", { name: "opencode_finished", data: { exitCode: result.exitCode, elapsedMs: Date.now() - startedAt, ...usage } });
 
@@ -256,6 +308,7 @@ async function main(frame: AdapterFrame): Promise<void> {
     let written = 0; let deleted = 0; let rejected = 0;
     const after = new Set(walk(scratch));
     for (const path of after) {
+      if (isImage(path)) continue;
       const stat = lstatSync(join(scratch, path));
       if (!stat.isFile() || stat.size > 2 * 1024 * 1024) continue;
       const content = readFileSync(join(scratch, path), "utf8");
@@ -279,7 +332,7 @@ async function main(frame: AdapterFrame): Promise<void> {
   }
 }
 
-send("hello", { adapter: { id: "opencode", version: "1" }, capabilities: ["event", "read_file", "write_file", "run_command"], extensions: { model: options.model } });
+send("hello", { adapter: { id: "opencode", version: "2" }, capabilities: ["event", "read_file", "write_file", "run_command"], extensions: { model: options.model } });
 
 createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = codec.parse(Buffer.from(line));
