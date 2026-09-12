@@ -1,0 +1,12 @@
+{
+  "description": "The per-route weight-sum rule only fires when the sum exceeds 100, so 60 + 30 passes validation and 下一步 moves on. Trips the critical route-weights-sum-100 test (expects the error text and to stay on step 1).",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

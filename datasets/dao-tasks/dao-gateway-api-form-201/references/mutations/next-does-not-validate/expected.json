@@ -1,0 +1,12 @@
+{
+  "description": "下一步 still computes and displays errors but advances regardless of the outcome. Every step-1/step-2 blocking test (empty-next-blocked, name-rules, weights, redirect URL, hash switches, timeout max) fails because the panel changes; 确定 still validates.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

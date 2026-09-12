@@ -1,0 +1,12 @@
+{
+  "description": "The timeout upper bound is dropped: 500 minutes is accepted and 下一步 proceeds to step 3 without the '最长只支持配置 5 分钟' error. Trips the critical step2-timeout-max-5 test.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

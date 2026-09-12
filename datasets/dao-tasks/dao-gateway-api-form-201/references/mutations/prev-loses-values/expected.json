@@ -1,0 +1,12 @@
+{
+  "description": "上一步 resets the whole form to its defaults before switching panels, so the values entered on step 1 (and the rewrite switch set on step 2) are gone when the user returns. Trips the critical prev-keeps-values test only.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

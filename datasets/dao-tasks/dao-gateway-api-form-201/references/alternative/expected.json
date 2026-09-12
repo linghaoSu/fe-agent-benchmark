@@ -1,0 +1,10 @@
+{
+  "description": "Structurally different but behaviourally equivalent implementation: Pinia store + yup schemas (vs gold's provide/inject composable + hand-written validators), a hand-drawn step indicator, native-checkbox switches and a generic Pick/Field component pair. Must be solved; visual similarity to gold's baselines is legitimately lower.",
+  "expect": {
+    "valid": true,
+    "solved": true,
+    "gates": { "integrity": "passed", "build": "passed", "criticalFunctionalTests": "passed" },
+    "dimensions": { "responsive": "passed", "accessibility": "passed" },
+    "scoreAtLeast": { "functional": 1, "responsive": 1, "accessibility": 1 }
+  }
+}

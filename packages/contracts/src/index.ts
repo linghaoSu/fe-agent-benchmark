@@ -164,7 +164,25 @@ export interface PreflightedTaskBundle {
   proxyConfigurationHash?: string;
   mockApi?: { image: string; command: string[]; port: number };
   packageProxy?: { image: string; command: string[]; port: number; fixtureDirectory?: string };
+  /** Optional sandbox resource overrides declared by the Task (`environment.resources`); absent fields keep the runner defaults. */
+  resources?: TaskResources;
   design?: TaskDesign;
+}
+
+export interface TaskResources {
+  memoryMb?: number;
+  cpus?: number;
+  pidsLimit?: number;
+}
+
+function resourcesOf(value: unknown): TaskResources | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: TaskResources = {
+    ...(typeof value.memoryMb === "number" && Number.isSafeInteger(value.memoryMb) && value.memoryMb > 0 ? { memoryMb: value.memoryMb } : {}),
+    ...(typeof value.cpus === "number" && Number.isFinite(value.cpus) && value.cpus > 0 ? { cpus: value.cpus } : {}),
+    ...(typeof value.pidsLimit === "number" && Number.isSafeInteger(value.pidsLimit) && value.pidsLimit > 0 ? { pidsLimit: value.pidsLimit } : {}),
+  };
+  return Object.keys(out).length ? out : undefined;
 }
 
 export type TaskNetwork = "controlled-proxy" | "open";
@@ -1048,5 +1066,6 @@ export function readPreflightedTaskBundle(bundlePath: string): PreflightedTaskBu
         } }
       : {}),
     ...(design ? { design } : {}),
+    ...(resourcesOf(environment.resources) ? { resources: resourcesOf(environment.resources) } : {}),
   };
 }

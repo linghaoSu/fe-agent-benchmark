@@ -1,0 +1,525 @@
+// 创建云原生网关 API 页面样式（桌面优先，≤ 768px 时表单纵向堆叠）。
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// 可访问性：库默认的辅助文字 / 占位符 / 表头颜色对比度不足（WCAG AA 4.5:1），页面内统一加深。
+.api-create {
+  .dao-form-item__helper-text,
+  .dao-helper-text,
+  .dao-selection-text--placeholder,
+  .dao-input::placeholder,
+  .dao-input-append,
+  .dao-input-prepend,
+  .api-rows__head,
+  .api-result__hint {
+    color: var(--dao-gray-blue-020);
+  }
+
+  .api-banner .api-link,
+  .api-banner__text a {
+    text-decoration: underline;
+  }
+
+  .api-link {
+    color: var(--dao-primary-blue-030);
+  }
+}
+
+.api-create {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-size: 13px;
+  color: var(--dao-gray-010);
+  background: var(--dao-gray-blue-090);
+
+  &__header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    height: 60px;
+    padding: 0 20px;
+    background: var(--dao-pure-white);
+    border-bottom: 1px solid var(--dao-gray-blue-070);
+  }
+
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 18px;
+    color: var(--dao-gray-010);
+    text-decoration: none;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  &__main {
+    flex: 1;
+    padding: 20px;
+  }
+
+  &__footer {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 10px 20px;
+    background: var(--dao-pure-white);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.api-card {
+  padding: 20px;
+  background: var(--dao-pure-white);
+  border-radius: 4px;
+
+  & + & {
+    margin-top: 20px;
+  }
+
+  &--steps {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .dao-steps {
+      width: 100%;
+      max-width: 560px;
+    }
+  }
+}
+
+.api-step {
+  &__title {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  .api-step__title + .api-step__title,
+  .dao-form + .api-step__title {
+    margin-top: 12px;
+  }
+
+  &__banner {
+    margin-bottom: 20px;
+  }
+}
+
+.api-input {
+  width: 100%;
+  max-width: 340px;
+
+  .dao-input-wrapper,
+  .dao-select,
+  .dao-selection {
+    width: 100%;
+  }
+
+  &--number {
+    max-width: 200px;
+  }
+}
+
+.api-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+}
+
+.api-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--dao-primary-blue-040);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.api-path {
+  display: flex;
+  max-width: 480px;
+
+  &__type {
+    flex: none;
+    width: 120px;
+
+    .dao-select,
+    .dao-selection {
+      width: 100%;
+    }
+
+    .dao-selection {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+
+    .dao-input-inner,
+    .dao-input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .dao-input {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+}
+
+.api-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  padding: 6px 10px;
+  font: inherit;
+  line-height: 20px;
+  color: inherit;
+  resize: vertical;
+  border: 1px solid var(--dao-gray-blue-060);
+  border-radius: 4px;
+
+  &:focus {
+    border-color: var(--dao-primary-blue-040);
+    outline: none;
+  }
+}
+
+.api-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 640px;
+
+  &__head {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.4fr) 24px;
+    gap: 10px;
+    align-items: start;
+
+    &--hash {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) 24px;
+    }
+
+    &--kv {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 24px;
+    }
+
+    .dao-select,
+    .dao-selection,
+    .dao-input-wrapper {
+      width: 100%;
+    }
+  }
+}
+
+.api-route {
+  margin-bottom: 12px;
+  border: 1px solid var(--dao-gray-blue-070);
+  border-radius: 4px;
+
+  &__header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    height: 44px;
+    padding: 0 12px;
+    background: var(--dao-gray-blue-090);
+  }
+
+  &__toggle {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  &__chevron {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--dao-gray-blue-030);
+    transition: transform 0.2s;
+    transform: rotate(-90deg);
+  }
+
+  &--expanded &__chevron {
+    transform: rotate(0);
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__warn {
+    font-size: 16px;
+    color: var(--dao-red-030);
+  }
+
+  &__body {
+    padding: 20px 20px 0;
+  }
+
+  &__banner {
+    max-width: 760px;
+    margin-bottom: 12px;
+  }
+}
+
+.api-add-route {
+  margin-top: 4px;
+}
+
+.api-target-box {
+  max-width: 760px;
+  padding: 20px 20px 0;
+  margin-top: 12px;
+  border: 1px dashed var(--dao-gray-blue-060);
+  border-radius: 4px;
+
+  &--solid {
+    padding-bottom: 0;
+    border-style: solid;
+    background: var(--dao-gray-blue-090);
+  }
+
+  &__hint {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin: 0 0 16px;
+    color: var(--dao-gray-030);
+
+    &--error {
+      color: var(--dao-red-030);
+    }
+  }
+
+  > .api-add-link {
+    margin-bottom: 20px;
+  }
+}
+
+.api-service {
+  position: relative;
+  padding: 20px 48px 0 20px;
+  margin-bottom: 16px;
+  background: var(--dao-gray-blue-090);
+  border: 1px solid var(--dao-gray-blue-070);
+  border-radius: 4px;
+
+  &__remove {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    font-size: 18px;
+    transform: translateY(-50%);
+  }
+}
+
+.api-create .api-helper-warning {
+  color: var(--dao-yellow-010);
+}
+
+.api-inline-banner {
+  max-width: 400px;
+  margin-top: 12px;
+}
+
+.api-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.api-tag {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 8px;
+  line-height: 24px;
+  background: var(--dao-gray-blue-070);
+  border-radius: 4px;
+
+  &__remove {
+    padding: 0;
+    font-size: 12px;
+    color: var(--dao-gray-blue-030);
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+}
+
+.api-policy--inactive {
+  .dao-form-item__label {
+    color: var(--dao-gray-blue-030);
+  }
+}
+
+.api-result {
+  &__title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+
+    .icon-sys-success {
+      color: var(--dao-green-020);
+    }
+  }
+
+  &__hint {
+    margin: 0 0 12px;
+  }
+
+  &__json {
+    max-height: 60vh;
+    padding: 16px;
+    margin: 0;
+    overflow: auto;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 18px;
+    background: var(--dao-gray-blue-090);
+    border-radius: 4px;
+  }
+
+  &__actions {
+    margin-top: 16px;
+  }
+}
+
+.api-select-create {
+  padding: 8px 10px;
+}
+
+@media (max-width: 768px) {
+  .api-create__main {
+    padding: 12px;
+  }
+
+  .api-card {
+    padding: 16px 12px;
+  }
+
+  .api-card--steps .dao-steps {
+    max-width: 100%;
+  }
+
+  .dao-form-item {
+    flex-direction: column;
+
+    &.is-required > .dao-form-item__label {
+      padding-right: 14px;
+
+      &::after {
+        top: auto;
+        right: 0;
+        bottom: 0;
+        transform: translate(0, 3px);
+      }
+    }
+  }
+
+  .dao-form-item__label {
+    align-self: flex-start;
+    width: auto !important;
+    padding-right: 0;
+    margin-bottom: 6px;
+    text-align: left;
+
+    .dao-form-item__label-icon-wrapper {
+      justify-content: flex-start;
+    }
+  }
+
+  .dao-form-item__content {
+    padding-bottom: 16px !important;
+  }
+
+  .api-input,
+  .api-input--number,
+  .api-path,
+  .api-textarea {
+    max-width: 100%;
+  }
+
+  .api-rows__grid,
+  .api-rows__grid--hash,
+  .api-rows__grid--kv {
+    grid-template-columns: minmax(0, 1fr) 24px;
+
+    > :nth-child(n) {
+      grid-column: 1;
+    }
+
+    > :last-child {
+      grid-row: 1;
+      grid-column: 2;
+    }
+  }
+
+  .api-rows__head {
+    display: none;
+  }
+
+  .api-target-box {
+    padding: 12px 12px 0;
+  }
+
+  .api-service {
+    padding: 12px 40px 0 12px;
+  }
+
+  .api-create__footer {
+    flex-wrap: wrap;
+  }
+}

@@ -93,10 +93,10 @@ const usage = [
   "pnpm eval run show [--repair] <run-id> [--db <path>]",
   "pnpm eval run doctor <run-id> [--db <path>]",
   "pnpm eval run export --audience requester <run-id> [--db <path>]",
-  "pnpm eval baseline <task-dir> [--scenario react-orders-gold] [--sandbox docker]",
-  "pnpm eval calibrate <task-dir> [--sandbox docker] [--out <report.json>]",
-  "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker]",
-  "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--db <path>]",
+  "pnpm eval baseline <task-dir> [--scenario react-orders-gold] [--sandbox docker] [--design-mode sketch|image|both]",
+  "pnpm eval calibrate <task-dir> [--sandbox docker] [--design-mode sketch|image|both] [--out <report.json>]",
+  "pnpm eval repeat <task-dir> [--times 2] [--scenario reference:gold] [--seed 1] [--sandbox docker] [--design-mode sketch|image|both]",
+  "pnpm eval batch <task-dir> --seeds 1,2,3 [--scenario reference:gold] [--configuration <id>] [--sandbox docker] [--design-mode sketch|image|both] [--db <path>]",
   "pnpm eval compare --config <id>=<runId,...> [--config ...] [--k n] [--out report.json] [--db <path>]",
   "pnpm eval suite publish --id <suiteId> --version <n> --type benchmark|regression --task <task-dir> [--task ...] --calibration <reports-dir> --out <suite.json>",
   "pnpm eval suite calibrate --suite <suite.json> --tasks-root <dir> [--out matrix.json] [--sandbox docker]",
@@ -177,13 +177,23 @@ function databasePath(option: string | true | undefined): string {
 }
 
 /**
+ * `run create` arguments selecting the design mode for a child Run. Tasks that ship design assets need a mode;
+ * host-side reference workflows (baseline/calibrate/repeat/batch) default to `both`, and the option is
+ * rejected for tasks without design assets so the child Run's own DESIGN_MODE_NOT_APPLICABLE check stays reachable.
+ */
+function designModeArguments(metadata: { design?: { modes: string[] } }, option: string | true | undefined): string[] {
+  if (typeof option === "string") return ["--design-mode", option];
+  return metadata.design ? ["--design-mode", metadata.design.modes.includes("both") ? "both" : metadata.design.modes[0]!] : [];
+}
+
+/**
  * Runs the gold reference through the Docker pipeline in a throwaway database and copies the
  * resulting screenshots into the hidden bundle as visual baselines. Screenshots are staged as
  * base64 JSON because the artifact store only scans text; the baseline files are real PNGs.
  */
 async function writeBaselines(bundlePath: string, arguments_: string[]): Promise<boolean> {
   const parsed = parseArguments(arguments_);
-  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--scenario" && option !== "--sandbox")) return false;
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--scenario" && option !== "--sandbox" && option !== "--design-mode")) return false;
   const bundle = resolve(process.cwd(), bundlePath);
   const scenario = (parsed.options["--scenario"] as string | undefined) ?? "react-orders-gold";
   const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
@@ -198,7 +208,7 @@ async function writeBaselines(bundlePath: string, arguments_: string[]): Promise
       if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
       return JSON.parse(result.stdout) as Record<string, unknown>;
     };
-    const created = cli("run", "create", bundle, "--seed", "1", "--sandbox", sandbox, "--db", databasePath) as { runId: string };
+    const created = cli("run", "create", bundle, "--seed", "1", "--sandbox", sandbox, ...designModeArguments(metadata, parsed.options["--design-mode"]), "--db", databasePath) as { runId: string };
     cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
     const shown = cli("run", "show", created.runId, "--db", databasePath) as { run: { status: string }; attempts: Array<{ ordinal: number; lifecycleStatus: string }>; artifacts: Array<{ relativePath: string }> };
     if (shown.run.status !== "COMPLETED") throw new Error(`Baseline Run ended ${shown.run.status}`);
@@ -243,7 +253,7 @@ interface ReferenceRun {
 }
 
 /** Runs one Task bundle once through the Docker pipeline with the given mock scenario in a throwaway database. */
-function runScenario(bundle: string, scenario: string, sandbox: string, seed: string, root: string): ReferenceRun {
+function runScenario(bundle: string, scenario: string, sandbox: string, seed: string, root: string, designMode: string[] = []): ReferenceRun {
   const databasePath = join(root, `${randomUUID()}.sqlite`);
   const cli = (...args: string[]) => {
     const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS });
@@ -251,7 +261,7 @@ function runScenario(bundle: string, scenario: string, sandbox: string, seed: st
     if (result.status !== 0) throw new Error(result.stderr || result.stdout || `eval ${args[0]} failed`);
     return JSON.parse(result.stdout) as Record<string, unknown>;
   };
-  const created = cli("run", "create", bundle, "--seed", seed, "--sandbox", sandbox, "--db", databasePath) as { runId: string };
+  const created = cli("run", "create", bundle, "--seed", seed, "--sandbox", sandbox, ...designMode, "--db", databasePath) as { runId: string };
   cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", databasePath);
   const shown = cli("run", "show", created.runId, "--db", databasePath) as {
     run: { status: string; inputHash: string; resolvedInputJson: string }; result?: { resultJson: string }; producerRecords: Array<{ privateCode: string }>;
@@ -289,10 +299,11 @@ function unlockTree(path: string): void {
  */
 async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
   const parsed = parseArguments(arguments_);
-  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--sandbox" && option !== "--out")) return false;
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => option !== "--sandbox" && option !== "--out" && option !== "--design-mode")) return false;
   const bundle = resolve(process.cwd(), bundlePath);
   const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
   const metadata = readPreflightedTaskBundle(bundle);
+  const designMode = designModeArguments(metadata, parsed.options["--design-mode"]);
   const referencesRoot = join(bundle, "references");
   const references: string[] = [];
   for (const entry of readdirSync(referencesRoot, { withFileTypes: true })) {
@@ -307,7 +318,7 @@ async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<
       const expectedPath = join(referencesRoot, reference, "expected.json");
       if (!existsSync(expectedPath)) throw new Error(`Reference ${reference} has no expected.json`);
       const expectation = parseReferenceExpectation(JSON.parse(readFileSync(expectedPath, "utf8")), reference);
-      const run = runScenario(bundle, `reference:${reference}`, sandbox, "1", root);
+      const run = runScenario(bundle, `reference:${reference}`, sandbox, "1", root, designMode);
       return calibrate({ reference, runId: run.runId, result: run.result, privateCodes: run.privateCodes }, expectation);
     });
     const checksum = checksumTaskBundle(bundle);
@@ -323,8 +334,9 @@ async function calibrateTask(bundlePath: string, arguments_: string[]): Promise<
 /** SC-005 deterministic repeat matrix: same bundle, scenario and seed N times; conclusions must be identical. */
 async function repeatTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
   const parsed = parseArguments(arguments_);
-  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--sandbox", "--times", "--scenario", "--seed"].includes(option))) return false;
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--sandbox", "--times", "--scenario", "--seed", "--design-mode"].includes(option))) return false;
   const bundle = resolve(process.cwd(), bundlePath);
+  const designMode = designModeArguments(readPreflightedTaskBundle(bundle), parsed.options["--design-mode"]);
   const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
   const times = Number(parsed.options["--times"] ?? 2);
   if (!Number.isInteger(times) || times < 2 || times > 10) return false;
@@ -332,7 +344,7 @@ async function repeatTask(bundlePath: string, arguments_: string[]): Promise<boo
   const seed = (parsed.options["--seed"] as string | undefined) ?? "1";
   const root = mkdtempSync(join(tmpdir(), "fab-repeat-"));
   try {
-    const runs = Array.from({ length: times }, () => runScenario(bundle, scenario, sandbox, seed, root));
+    const runs = Array.from({ length: times }, () => runScenario(bundle, scenario, sandbox, seed, root, designMode));
     const comparison = compareRepeats(runs.map((run) => ({ result: run.result, fingerprint: run.fingerprint, codes: run.privateCodes })));
     console.log(JSON.stringify({ scenario, seed, times, runIds: runs.map((run) => run.runId), identical: comparison.identical, differences: comparison.differences, comparedFields: comparison.compared.length }));
     process.exitCode = comparison.identical ? 0 : 1;
@@ -363,7 +375,7 @@ function parseReferenceExpectation(value: unknown, reference: string): Reference
  */
 async function batchTask(bundlePath: string, arguments_: string[]): Promise<boolean> {
   const parsed = parseArguments(arguments_);
-  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--seeds", "--scenario", "--configuration", "--sandbox", "--db"].includes(option))) return false;
+  if (!parsed || parsed.positionals.length !== 0 || Object.keys(parsed.options).some((option) => !["--seeds", "--scenario", "--configuration", "--sandbox", "--db", "--design-mode"].includes(option))) return false;
   const seedsOption = parsed.options["--seeds"];
   if (typeof seedsOption !== "string") return false;
   const seeds = seedsOption.split(",").map((value) => Number(value.trim()));
@@ -372,6 +384,7 @@ async function batchTask(bundlePath: string, arguments_: string[]): Promise<bool
   const scenario = (parsed.options["--scenario"] as string | undefined) ?? "reference:gold";
   const sandbox = (parsed.options["--sandbox"] as string | undefined) ?? "docker";
   const configurationId = (parsed.options["--configuration"] as string | undefined) ?? `mock:${scenario}`;
+  const designMode = designModeArguments(readPreflightedTaskBundle(bundle), parsed.options["--design-mode"]);
   const path = databasePath(parsed.options["--db"]);
   const cli = (...args: string[]) => {
     const result = spawnSync(process.execPath, [new URL(import.meta.url).pathname, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: CHILD_RUN_TIMEOUT_MS });
@@ -380,7 +393,7 @@ async function batchTask(bundlePath: string, arguments_: string[]): Promise<bool
     return JSON.parse(result.stdout) as Record<string, unknown>;
   };
   const runs = seeds.map((seed) => {
-    const created = cli("run", "create", bundle, "--seed", String(seed), "--sandbox", sandbox, "--db", path) as { runId: string };
+    const created = cli("run", "create", bundle, "--seed", String(seed), "--sandbox", sandbox, ...designMode, "--db", path) as { runId: string };
     const executed = cli("run", "execute", created.runId, "--agent", "mock", "--mock-scenario", scenario, "--sandbox", sandbox, "--db", path) as { status: string };
     return { seed, runId: created.runId, status: executed.status };
   });
@@ -690,7 +703,12 @@ function createRun(arguments_: string[]): boolean {
       imageReference,
       imageDigest: imageReference.slice(imageReference.indexOf("@") + 1),
       user: "1000:1000",
-      resources: { memoryBytes: 536_870_912, cpus: 1, pidsLimit: 128 },
+      // Runner defaults, overridable per Task via `environment.resources` (heavy bundlers need more than 512 MB).
+      resources: {
+        memoryBytes: (metadata.resources?.memoryMb ?? 512) * 1024 * 1024,
+        cpus: metadata.resources?.cpus ?? 1,
+        pidsLimit: metadata.resources?.pidsLimit ?? 128,
+      },
     },
     // A real agent mirrors the workspace through read_file, so the agent profile allows whole source files inline.
     toolRouter: budgetProfile === "agent"

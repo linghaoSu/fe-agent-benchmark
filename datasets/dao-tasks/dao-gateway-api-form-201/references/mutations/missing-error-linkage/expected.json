@@ -1,0 +1,12 @@
+{
+  "description": "The API 名称 input no longer carries aria-invalid / aria-describedby, so the error message is shown but not programmatically linked to the field. Trips the critical step1-empty-next-blocked test's linkage assertions; a11y stays green because the visible error text and the label are intact.",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

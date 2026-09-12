@@ -23,6 +23,11 @@ export type FrontendAgentEvaluationTask = {
       "command": Array<string>;
       "port": number;
     };
+    "resources"?: {
+      "memoryMb"?: number;
+      "cpus"?: number;
+      "pidsLimit"?: number;
+    };
     "packageProxy"?: {
       "image": string;
       "command": Array<string>;

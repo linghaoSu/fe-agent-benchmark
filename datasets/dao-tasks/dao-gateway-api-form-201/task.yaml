@@ -1,0 +1,40 @@
+schemaVersion: 1
+id: dao-gateway-api-form-201
+version: 1
+title: 创建云原生网关 API（三步表单）
+tags: { framework: vue, language: typescript, taskType: feature, difficulty: 5, capabilities: [design-to-code, forms, validation, multi-step] }
+environment:
+  image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+  repositoryCommit: fixture
+  packageManager: pnpm
+  locale: zh-CN
+  timezone: Asia/Shanghai
+  network: open
+  resources: { memoryMb: 2048, cpus: 2, pidsLimit: 512 }
+viewports:
+  - { name: desktop, width: 1440, height: 900 }
+  - { name: tablet, width: 768, height: 1024 }
+  - { name: mobile, width: 375, height: 812 }
+budget: { maxWallTimeSeconds: 1800, maxAgentSteps: 300, maxCostUsd: 10 }
+permissions:
+  writablePaths: [src/**, tests/**]
+  forbiddenPaths: [evaluator/**, references/**]
+  allowDependencyChanges: false
+commands:
+  install: corepack pnpm install --frozen-lockfile --ignore-scripts
+  typecheck: corepack pnpm run lint:type
+  lint: corepack pnpm run lint:es
+  test: corepack pnpm exec vitest run
+  build: corepack pnpm run build
+  start: node server.mjs
+evaluation:
+  requiredGates: { integrity: true, build: true, criticalFunctionalTests: true }
+  weights: { functional: 0.5, visual: 0.15, responsive: 0.1, accessibility: 0.15, engineering: 0.1 }
+  visual: { mismatchThreshold: 0.05 }
+  buildOutputPaths: [dist/**, node_modules/**]
+  app: { port: 5173 }
+  hiddenBundle: evaluator/hidden
+design:
+  sketchSpec: design/spec.json
+  images: [design/step1.png, design/step2.png, design/step3.png]
+  modes: [sketch, image, both]

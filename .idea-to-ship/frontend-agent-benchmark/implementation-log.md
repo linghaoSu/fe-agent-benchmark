@@ -840,3 +840,18 @@ per-task 13–26k input / 1–4k output tokens, 60–135 s wall.
 - Gates: GATE-V9-001…005 + GATE-V9-Docker (PNG sha256 round-trip, hidden asset absent, corepack pnpm),
   GATE-V9.1-Docker in the adapter file. Review findings fixed: path traversal in design paths, fake-sandbox
   mode ignored, adapter hardcoding `design/`, npm store-dir warnings, base64 corruption by redaction.
+
+## 2026-09-12 — V9.2 first realistic dao task: dao-gateway-api-form-201
+
+- `datasets/dao-tasks/dao-gateway-api-form-201`: a DAO CLI scaffold (Vue 3 + rsbuild + @dao-style/core 1.36 /
+  extend 1.26, pnpm, `network: open`) with design assets extracted from DCE6.sketch (Step1/2/3 PNGs + merged
+  `design/spec.json`), README as a real Chinese product spec for the three-step 创建云原生网关 API wizard,
+  14 hidden Playwright cases (9 critical), gold + alternative + 8 single-defect mutations. Calibration passes
+  with mutation capture 1.0 (report `datasets/calibration/dao-gateway-api-form-201.json`).
+- Framework additions: optional `environment.resources { memoryMb, cpus, pidsLimit }` (rsbuild needs ~1.1 GB;
+  the task declares 2048/2/512), `--design-mode` on baseline/calibrate/repeat/batch (design tasks default to
+  `both`), gate v10-task-resources.
+- Sandbox timings (2 GB / 2 CPU): pnpm install ≈ 26 s, build ≈ 9 s, hidden spec ≈ 3 min; one reference Run
+  ≈ 4–5 min, full calibration ≈ 44 min. DaoSelect needs a hardened pick helper in Playwright (scroll trigger,
+  wait for popper).
+- Not yet in a suite; no reliability baseline; engineering dimension is 0.83 for gold (feature footprint).

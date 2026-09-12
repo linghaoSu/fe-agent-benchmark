@@ -1,0 +1,12 @@
+{
+  "description": "The submitted JSON flattens pathType/path/methods to the top level instead of nesting them under `match`, so the documented payload shape is violated. Only the critical submit-produces-payload test fails (its deep-equal against the fixture).",
+  "expect": {
+    "solved": false,
+    "gates": {
+      "criticalFunctionalTests": "failed"
+    },
+    "codes": [
+      "FUNCTIONAL_CRITICAL_FAILED"
+    ]
+  }
+}

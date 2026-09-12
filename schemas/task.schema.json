@@ -127,6 +127,27 @@
           },
           "additionalProperties": false
         },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "memoryMb": {
+              "type": "integer",
+              "minimum": 128,
+              "maximum": 8192
+            },
+            "cpus": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 8
+            },
+            "pidsLimit": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 4096
+            }
+          },
+          "additionalProperties": false
+        },
         "packageProxy": {
           "type": "object",
           "required": [

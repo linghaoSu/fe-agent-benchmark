@@ -1,0 +1,12 @@
+{
+  "description": "The match-rule row container gets a fixed `min-width: 640px`, so the route card and page overflow horizontally at 375px (and 768px). All functional tests pass; the responsive dimension fails.",
+  "expect": {
+    "solved": true,
+    "gates": {
+      "criticalFunctionalTests": "passed"
+    },
+    "dimensions": {
+      "responsive": "failed"
+    }
+  }
+}
