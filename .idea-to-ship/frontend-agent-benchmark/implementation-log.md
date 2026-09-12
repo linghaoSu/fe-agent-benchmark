@@ -855,3 +855,20 @@ per-task 13–26k input / 1–4k output tokens, 60–135 s wall.
   ≈ 4–5 min, full calibration ≈ 44 min. DaoSelect needs a hardened pick helper in Playwright (scroll trigger,
   wait for popper).
 - Not yet in a suite; no reliability baseline; engineering dimension is 0.83 for gold (feature footprint).
+
+### gpt-6-astra on dao-gateway-api-form-201, three design modes (seed 1, `runs/dao-astra.sqlite`)
+
+| mode | solved | functional | engineering | tokens in/out | cost | wall |
+|---|---|---|---|---|---|---|
+| sketch | yes | 14/14 | 0.67 | 137k / 27k | $6.99 | 9.5 min |
+| image | no — BUILD_LINT_FAILED (`vue/no-deprecated-filter` false positive on a `generic="T extends A | B"` attribute); hit the 29-min runtime cap | — | — | 148k / 20k | $3.93 | 29 min |
+| both | yes | 14/14 | 0.67 | 176k / 29k | $8.49 | 12.9 min |
+
+Observations: from the structured spec alone the model rebuilt the whole Sketch frame (top bar, left nav,
+form) — closer to the design than gold, which only implements the form area; the visual dimension is 0 for
+both solved Runs because the baseline is gold's chrome-less page. Image-only mode was slower (32 `read`
+calls to inspect PNGs) and ended in a lint failure the agent never got to fix. Two harness bugs surfaced and
+were fixed before any Run completed: the adapter's frame codec ignored the host's 1 MiB cap (first PNG killed
+it), and blocking `spawnSync` installs / store removal starved heartbeats (PROTOCOL_HEARTBEAT_TIMEOUT).
+Open questions for the owner: whether visual baselines for dao tasks should include the frame, and whether
+lint should stay a Build gate for realistic tasks.
