@@ -15,7 +15,7 @@
  * `npm ci` from `--fixtures` (controlled-proxy bundles), or — for `environment.network: open` tasks, which
  * have neither — a normal online `npm ci` against the real registry, pinned by the lockfile's integrity hashes.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -188,7 +188,21 @@ function runOpenCode(scratch: string, prompt: string, usage: Usage, deadline: nu
   });
 }
 
-function installOffline(scratch: string, fixtures: string): void {
+/** Runs an installer asynchronously so heartbeats keep flowing; a blocking spawnSync would trip the host's heartbeat deadline. */
+function spawnWithHeartbeat(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, timeoutMs: number): Promise<{ status: number; stderr: string }> {
+  return new Promise((resolveResult) => {
+    const child = spawn(command, args, { cwd, env, stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    const heartbeat = setInterval(() => send("heartbeat", {}), 2_000);
+    const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+    child.stderr.on("data", (chunk) => { stderr += String(chunk); if (stderr.length > 65_536) stderr = stderr.slice(-65_536); });
+    const finish = (status: number) => { clearInterval(heartbeat); clearTimeout(timer); resolveResult({ status, stderr }); };
+    child.on("close", (code) => finish(code ?? 1));
+    child.on("error", (error) => { stderr += String(error); finish(127); });
+  });
+}
+
+async function installOffline(scratch: string, fixtures: string): Promise<void> {
   const lock = JSON.parse(readFileSync(join(scratch, "package-lock.json"), "utf8")) as { packages?: Record<string, { resolved?: string }> };
   const rewritten = JSON.parse(JSON.stringify(lock)) as typeof lock;
   for (const entry of Object.values(rewritten.packages ?? {})) {
@@ -197,27 +211,25 @@ function installOffline(scratch: string, fixtures: string): void {
   const lockPath = join(scratch, "package-lock.json");
   const original = readFileSync(lockPath, "utf8");
   writeFileSync(lockPath, JSON.stringify(rewritten));
-  const result = spawnSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--offline"], { cwd: scratch, encoding: "utf8", timeout: 120_000, env: { ...process.env, npm_config_cache: join(scratch, ".npm-cache") } });
+  const result = await spawnWithHeartbeat("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--offline"], scratch, { ...process.env, npm_config_cache: join(scratch, ".npm-cache") }, 120_000);
   // Restore the exact original lockfile so the agent's diff does not include our rewrite.
   writeFileSync(lockPath, original);
   rmSync(join(scratch, ".npm-cache"), { recursive: true, force: true });
-  send("event", { name: "opencode_offline_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
+  send("event", { name: "opencode_offline_install", data: { exitCode: result.status, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
-function installOnline(scratch: string): void {
-  const result = spawnSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: scratch, encoding: "utf8", timeout: 180_000, env: { ...process.env, npm_config_cache: join(scratch, ".npm-cache") } });
+async function installOnline(scratch: string): Promise<void> {
+  const result = await spawnWithHeartbeat("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], scratch, { ...process.env, npm_config_cache: join(scratch, ".npm-cache") }, 180_000);
   rmSync(join(scratch, ".npm-cache"), { recursive: true, force: true });
-  send("event", { name: "opencode_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
+  send("event", { name: "opencode_install", data: { exitCode: result.status, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
 /** pnpm projects (DAO CLI output): corepack resolves the `packageManager` pin; store and corepack cache stay inside the scratch. */
-function installOnlinePnpm(scratch: string): void {
-  const result = spawnSync("corepack", ["pnpm", "install", "--frozen-lockfile", "--ignore-scripts"], {
-    cwd: scratch, encoding: "utf8", timeout: 300_000,
-    env: { ...process.env, npm_config_store_dir: join(scratch, ".pnpm-store"), COREPACK_HOME: join(scratch, ".corepack"), COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },
-  });
+async function installOnlinePnpm(scratch: string): Promise<void> {
+  const result = await spawnWithHeartbeat("corepack", ["pnpm", "install", "--frozen-lockfile", "--ignore-scripts"], scratch,
+    { ...process.env, npm_config_store_dir: join(scratch, ".pnpm-store"), COREPACK_HOME: join(scratch, ".corepack"), COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" }, 300_000);
   for (const cache of [".pnpm-store", ".corepack"]) rmSync(join(scratch, cache), { recursive: true, force: true });
-  send("event", { name: "opencode_install", data: { exitCode: result.status ?? 1, stderr: String(result.stderr ?? "").slice(-500) } });
+  send("event", { name: "opencode_install", data: { exitCode: result.status, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
 /** Design assets the Run actually exposes (declared by the Task, filtered by the mode, present in the workspace). */
@@ -290,12 +302,12 @@ async function main(frame: AdapterFrame): Promise<void> {
     } else if (options.fixturesSource && existsSync(options.fixturesSource) && existsSync(join(scratch, "package-lock.json"))) {
       // Offline install for the agent's own self-verification: the bundle's fixtures directory is the same
       // content the sandbox package proxy serves, so `npm ci` resolves without any registry access.
-      installOffline(scratch, resolve(options.fixturesSource));
+      await installOffline(scratch, resolve(options.fixturesSource));
     } else if (options.network === "open" && existsSync(join(scratch, "package-lock.json"))) {
       // Open-network tasks ship no fixtures: install from the real registry, pinned by lockfile integrity.
-      installOnline(scratch);
+      await installOnline(scratch);
     } else if (options.network === "open" && existsSync(join(scratch, "pnpm-lock.yaml"))) {
-      installOnlinePnpm(scratch);
+      await installOnlinePnpm(scratch);
     }
     send("event", { name: "opencode_workspace_mirrored", data: { files: mirror.size, images } });
 
