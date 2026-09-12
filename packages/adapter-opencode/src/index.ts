@@ -18,6 +18,7 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 
@@ -228,7 +229,9 @@ async function installOnline(scratch: string): Promise<void> {
 async function installOnlinePnpm(scratch: string): Promise<void> {
   const result = await spawnWithHeartbeat("corepack", ["pnpm", "install", "--frozen-lockfile", "--ignore-scripts"], scratch,
     { ...process.env, npm_config_store_dir: join(scratch, ".pnpm-store"), COREPACK_HOME: join(scratch, ".corepack"), COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" }, 300_000);
-  for (const cache of [".pnpm-store", ".corepack"]) rmSync(join(scratch, cache), { recursive: true, force: true });
+  // The content store is hundreds of MB; deleting it synchronously would starve heartbeats like the install did.
+  const heartbeat = setInterval(() => send("heartbeat", {}), 2_000);
+  try { await Promise.all([".pnpm-store", ".corepack"].map((cache) => rm(join(scratch, cache), { recursive: true, force: true }))); } finally { clearInterval(heartbeat); }
   send("event", { name: "opencode_install", data: { exitCode: result.status, stderr: String(result.stderr ?? "").slice(-500) } });
 }
 
